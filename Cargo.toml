@@ -1,0 +1,12 @@
+[package]
+name = "cherno_tracing"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bevy = "0.8.1"
+bevy_egui = "0.16.1"
+egui_dock = "0.2.1"
+image = "0.24.4"

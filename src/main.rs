@@ -13,14 +13,18 @@ use bevy::{
     },
     window::PresentMode,
 };
-use bevy_egui::{EguiContext, EguiPlugin};
+use bevy_egui::{egui::TextureId, EguiContext, EguiPlugin};
 use camera::{update_camera, ChernoCamera};
-use egui_dock::{DockArea, NodeIndex, Style, Tree};
+
 use renderer::Renderer;
 use scene::{Scene, Sphere};
-use ui::{DockTree, TabViewer, Tabs};
+use ui::{draw_dock_area, setup_ui};
 
 struct ViewportImage(Handle<Image>);
+pub struct ViewportEguiTexture(pub TextureId);
+pub struct ViewportSize(pub Vec2);
+#[derive(Debug, Default)]
+pub struct RenderDt(pub f32);
 
 fn main() {
     App::new()
@@ -31,7 +35,7 @@ fn main() {
         })
         .add_plugins(DefaultPlugins)
         .add_plugin(EguiPlugin)
-        .init_resource::<TabViewer>()
+        .init_resource::<RenderDt>()
         .insert_resource(ChernoCamera::new(45.0, 0.1, 100.0))
         .insert_resource(Scene {
             spheres: vec![
@@ -47,7 +51,8 @@ fn main() {
                 },
             ],
         })
-        .add_startup_system(setup_viewport)
+        .add_startup_system(setup_renderer)
+        .add_startup_system(setup_ui)
         .add_system(draw_dock_area)
         .add_system(resize_image.after(draw_dock_area))
         .add_system(render.after(resize_image))
@@ -55,7 +60,7 @@ fn main() {
         .run();
 }
 
-fn setup_viewport(
+fn setup_renderer(
     mut commands: Commands,
     mut egui_ctx: ResMut<EguiContext>,
     mut images: ResMut<Assets<Image>>,
@@ -86,46 +91,28 @@ fn setup_viewport(
     image.resize(size);
 
     let image_handle = images.add(image);
-    let image_id = egui_ctx.add_image(image_handle.clone());
-    commands.insert_resource(ViewportImage(image_handle));
+    commands.insert_resource(ViewportImage(image_handle.clone()));
+    commands.insert_resource(ViewportEguiTexture(egui_ctx.add_image(image_handle)));
+    commands.insert_resource(ViewportSize(Vec2::new(
+        size.width as f32,
+        size.height as f32,
+    )));
 
     commands.insert_resource(Renderer::new(size.width as usize, size.height as usize));
-
-    // Setup dock tree
-    let mut tree = Tree::new(vec![Tabs::Viewport(image_id)]);
-    let [_viewport, scene] = tree.split_right(NodeIndex::root(), 0.8, vec![Tabs::Scene]);
-    tree.split_below(scene, 0.5, vec![Tabs::Settings]);
-    commands.insert_resource(DockTree(tree));
-}
-
-fn draw_dock_area(
-    mut egui_context: ResMut<EguiContext>,
-    mut tree: ResMut<DockTree>,
-    mut tab_viewer: ResMut<TabViewer>,
-    time: Res<Time>,
-    mut scene: ResMut<Scene>,
-) {
-    tab_viewer.dt = time.delta_seconds();
-    tab_viewer.scene = scene.clone();
-    DockArea::new(&mut tree)
-        .style(Style::from_egui(egui_context.ctx_mut().style().as_ref()))
-        .show(egui_context.ctx_mut(), &mut *tab_viewer);
-    *scene = tab_viewer.scene.clone();
 }
 
 fn resize_image(
     viewport_image: Res<ViewportImage>,
+    viewport_size: Res<ViewportSize>,
     mut images: ResMut<Assets<Image>>,
-    tab_viewer: Res<TabViewer>,
     mut renderer: ResMut<Renderer>,
     mut camera: ResMut<ChernoCamera>,
 ) {
     let image = images.get_mut(&viewport_image.0).unwrap();
-    let viewport_size = tab_viewer.viewport_size;
-    if image.size().x != viewport_size.x || image.size().y != viewport_size.y {
+    if image.size().x != viewport_size.0.x || image.size().y != viewport_size.0.y {
         let size = Extent3d {
-            width: viewport_size.x as u32,
-            height: viewport_size.y as u32,
+            width: viewport_size.0.x as u32,
+            height: viewport_size.0.y as u32,
             ..default()
         };
         // This also clears the image with 0
@@ -140,7 +127,7 @@ fn render(
     viewport_image: Res<ViewportImage>,
     mut images: ResMut<Assets<Image>>,
     mut renderer: ResMut<Renderer>,
-    mut tab_viewer: ResMut<TabViewer>,
+    mut render_dt: ResMut<RenderDt>,
     camera: Res<ChernoCamera>,
     scene: Res<Scene>,
 ) {
@@ -152,7 +139,7 @@ fn render(
     }
 
     let elapsed = (Instant::now() - start).as_secs_f32();
-    tab_viewer.render_dt = elapsed as f32;
+    render_dt.0 = elapsed as f32;
 
     let image = images.get_mut(&viewport_image.0).unwrap();
     {

@@ -1,12 +1,15 @@
-use crate::scene::Scene;
+use crate::{scene::Scene, RenderDt, ViewportEguiTexture, ViewportSize};
 
 use bevy::prelude::*;
-use bevy_egui::egui::{self, TextureId};
-use egui_dock::Tree;
+use bevy_egui::{
+    egui::{self, TextureId},
+    EguiContext,
+};
+use egui_dock::{DockArea, NodeIndex, Style, Tree};
 
 #[derive(Debug, Clone)]
 pub enum Tabs {
-    Viewport(TextureId),
+    Viewport,
     Settings,
     Scene,
 }
@@ -14,8 +17,42 @@ pub enum Tabs {
 #[derive(Deref, DerefMut)]
 pub struct DockTree(pub Tree<Tabs>);
 
+pub fn setup_ui(mut commands: Commands) {
+    // Setup dock tree
+    let mut tree = Tree::new(vec![Tabs::Viewport]);
+    let [_viewport, scene] = tree.split_right(NodeIndex::root(), 0.8, vec![Tabs::Scene]);
+    tree.split_below(scene, 0.5, vec![Tabs::Settings]);
+    commands.insert_resource(DockTree(tree));
+}
+
+pub fn draw_dock_area(
+    mut egui_context: ResMut<EguiContext>,
+    mut tree: ResMut<DockTree>,
+    time: Res<Time>,
+    mut scene: ResMut<Scene>,
+    viewport_egui_texture: Res<ViewportEguiTexture>,
+    mut viewport_size: ResMut<ViewportSize>,
+    render_dt: Res<RenderDt>,
+) {
+    let mut tab_viewer = TabViewer {
+        viewport_texture: viewport_egui_texture.0,
+        viewport_size: viewport_size.0,
+        dt: time.delta_seconds(),
+        render_dt: render_dt.0,
+        scene: scene.clone(),
+    };
+
+    DockArea::new(&mut tree)
+        .style(Style::from_egui(egui_context.ctx_mut().style().as_ref()))
+        .show(egui_context.ctx_mut(), &mut tab_viewer);
+
+    *scene = tab_viewer.scene.clone();
+    viewport_size.0 = tab_viewer.viewport_size;
+}
+
 #[derive(Default)]
 pub struct TabViewer {
+    pub viewport_texture: TextureId,
     pub viewport_size: Vec2,
     pub dt: f32,
     pub render_dt: f32,
@@ -27,9 +64,9 @@ impl egui_dock::TabViewer for TabViewer {
 
     fn ui(&mut self, ui: &mut egui::Ui, tab: &mut Self::Tab) {
         match tab {
-            Tabs::Viewport(texture_id) => {
+            Tabs::Viewport => {
                 self.viewport_size = Vec2::from_array(ui.available_size().into());
-                ui.image(*texture_id, ui.available_size());
+                ui.image(self.viewport_texture, ui.available_size());
             }
             Tabs::Settings => {
                 ui.label(format!("Viewport size: {:?}", self.viewport_size));
@@ -62,12 +99,7 @@ impl egui_dock::TabViewer for TabViewer {
     }
 
     fn title(&mut self, tab: &mut Self::Tab) -> egui::WidgetText {
-        match tab {
-            Tabs::Viewport(_) => "Viewport",
-            Tabs::Settings => "Settings",
-            Tabs::Scene => "Scene",
-        }
-        .into()
+        format!("{tab:?}").into()
     }
 }
 

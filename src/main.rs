@@ -1,3 +1,6 @@
+mod camera;
+mod renderer;
+
 use std::time::Instant;
 
 use bevy::{
@@ -11,10 +14,9 @@ use bevy_egui::{
     egui::{self, TextureId},
     EguiContext, EguiPlugin,
 };
+use camera::{update_camera, ChernoCamera};
 use egui_dock::{DockArea, NodeIndex, Style, Tree};
 use renderer::Renderer;
-
-mod renderer;
 
 #[derive(Debug, Clone)]
 enum Tabs {
@@ -38,23 +40,13 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(EguiPlugin)
         .init_resource::<TabViewerRes>()
+        .insert_resource(ChernoCamera::new(45.0, 0.1, 100.0))
         .add_startup_system(setup_viewport)
         .add_system(draw_dock_area)
         .add_system(resize_image.after(draw_dock_area))
         .add_system(render.after(resize_image))
+        .add_system(update_camera)
         .run();
-}
-
-fn draw_dock_area(
-    mut egui_context: ResMut<EguiContext>,
-    mut tree: ResMut<DockTree>,
-    mut tab_viewer: ResMut<TabViewerRes>,
-    time: Res<Time>,
-) {
-    tab_viewer.dt = time.delta_seconds();
-    DockArea::new(&mut tree)
-        .style(Style::from_egui(egui_context.ctx_mut().style().as_ref()))
-        .show(egui_context.ctx_mut(), &mut *tab_viewer);
 }
 
 fn setup_viewport(
@@ -95,9 +87,21 @@ fn setup_viewport(
 
     // Setup dock tree
     let mut tree = Tree::new(vec![Tabs::Viewport(image_id)]);
-    let [_viewport, scene] = tree.split_right(NodeIndex::root(), 0.75, vec![Tabs::Scene]);
+    let [_viewport, scene] = tree.split_right(NodeIndex::root(), 0.6, vec![Tabs::Scene]);
     tree.split_below(scene, 0.5, vec![Tabs::Settings]);
     commands.insert_resource(DockTree(tree));
+}
+
+fn draw_dock_area(
+    mut egui_context: ResMut<EguiContext>,
+    mut tree: ResMut<DockTree>,
+    mut tab_viewer: ResMut<TabViewerRes>,
+    time: Res<Time>,
+) {
+    tab_viewer.dt = time.delta_seconds();
+    DockArea::new(&mut tree)
+        .style(Style::from_egui(egui_context.ctx_mut().style().as_ref()))
+        .show(egui_context.ctx_mut(), &mut *tab_viewer);
 }
 
 fn resize_image(
@@ -105,6 +109,7 @@ fn resize_image(
     mut images: ResMut<Assets<Image>>,
     tab_viewer: Res<TabViewerRes>,
     mut renderer: ResMut<Renderer>,
+    mut camera: ResMut<ChernoCamera>,
 ) {
     let image = images.get_mut(&viewport_image.0).unwrap();
     if image.size().x != tab_viewer.viewport_size.x || image.size().y != tab_viewer.viewport_size.y
@@ -116,6 +121,8 @@ fn resize_image(
         };
         // This also clears the image with 0
         image.resize(size);
+
+        camera.resize(size.width, size.height);
         renderer.resize(size.width as usize, size.height as usize);
     }
 }
@@ -125,10 +132,11 @@ fn render(
     mut images: ResMut<Assets<Image>>,
     mut renderer: ResMut<Renderer>,
     mut tab_viewer: ResMut<TabViewerRes>,
+    camera: Res<ChernoCamera>,
 ) {
     let start = Instant::now();
 
-    renderer.render();
+    renderer.render(&camera);
 
     let elapsed = (Instant::now() - start).as_secs_f32();
     tab_viewer.render_dt = elapsed as f32;
@@ -138,7 +146,8 @@ fn render(
     image.data = renderer
         .image_data
         .iter()
-        .flat_map(|x| x.to_le_bytes())
+        .flatten()
+        .copied()
         .collect::<Vec<u8>>();
 }
 

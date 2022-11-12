@@ -1,6 +1,9 @@
-use bevy::prelude::*;
+use bevy::{math::vec4, prelude::*};
 
-use crate::camera::ChernoCamera;
+use crate::{
+    camera::ChernoCamera,
+    scene::{Scene, Sphere},
+};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Ray {
@@ -30,7 +33,7 @@ impl Renderer {
         self.height = height;
     }
 
-    pub fn render(&mut self, camera: &ChernoCamera) {
+    pub fn render(&mut self, camera: &ChernoCamera, scene: &Scene) {
         let mut ray = Ray {
             origin: camera.position,
             direction: Vec3::ZERO,
@@ -39,51 +42,71 @@ impl Renderer {
         for y in 0..self.height {
             for x in 0..self.width {
                 ray.direction = camera.ray_directions[x + y * self.width];
-                let color = trace_ray(ray).clamp(Vec4::ZERO, Vec4::ONE);
+                let color = trace_ray(ray, scene).clamp(Vec4::ZERO, Vec4::ONE);
                 self.image_data[x + y * self.width] = color.as_u8_array();
             }
         }
     }
 }
 
-fn trace_ray(ray: Ray) -> Vec4 {
-    let radius = 0.5;
+const CLEAR_COLOR: Vec4 = vec4(0.0, 0.0, 0.0, 1.0);
 
-    // (bx^2 + by^2)t^2 + (2(axbx + ayby))t + (ax^2 + ay^2 - r^2) = 0
-    // where
-    // a = ray origin
-    // b = ray direction
-    // r = radius
-    // t = hit distance
-
-    let a = ray.direction.dot(ray.direction);
-    let b = 2.0 * ray.origin.dot(ray.direction);
-    let c = ray.origin.dot(ray.origin) - radius * radius;
-
-    // Quadratic forumula discriminant:
-    // b^2 - 4ac
-
-    let discriminant = b * b - 4.0 * a * c;
-    if discriminant < 0.0 {
-        return Vec4::new(0.0, 0.0, 0.0, 1.0);
+fn trace_ray(ray: Ray, scene: &Scene) -> Vec4 {
+    if scene.spheres.is_empty() {
+        return CLEAR_COLOR;
     }
 
-    // Quadratic formula:
-    // (-b +- sqrt(discriminant)) / 2a
+    let mut closest_sphere: Option<&Sphere> = None;
+    let mut hit_distance = f32::MAX;
+    for sphere in &scene.spheres {
+        // (bx^2 + by^2)t^2 + (2(axbx + ayby))t + (ax^2 + ay^2 - r^2) = 0
+        // where
+        // a = ray origin
+        // b = ray direction
+        // r = radius
+        // t = hit distance
 
-    let closest_t = (-b - discriminant.sqrt()) / (2.0 * a);
-    let _t0 = (-b + discriminant.sqrt()) / (2.0 * a);
+        let origin = ray.origin - sphere.position;
 
-    let hit_point = ray.origin + ray.direction * closest_t;
-    let normal = hit_point.normalize();
+        let a = ray.direction.dot(ray.direction);
+        let b = 2.0 * origin.dot(ray.direction);
+        let c = origin.dot(origin) - sphere.radius * sphere.radius;
 
-    let light_dir = Vec3::new(1.0, 1.0, 1.0).normalize();
-    let light_intensity = normal.dot(light_dir).max(0.0); // == cos(angle)
+        // Quadratic forumula discriminant:
+        // b^2 - 4ac
 
-    let mut sphere_color = Vec3::new(1.0, 0.0, 1.0);
-    sphere_color *= light_intensity;
+        let discriminant = b * b - 4.0 * a * c;
+        if discriminant < 0.0 {
+            continue;
+        }
 
-    sphere_color.extend(1.0)
+        // Quadratic formula:
+        // (-b +- sqrt(discriminant)) / 2a
+
+        let closest_t = (-b - discriminant.sqrt()) / (2.0 * a);
+        // let _t0 = (-b + discriminant.sqrt()) / (2.0 * a);
+        if closest_t < hit_distance {
+            hit_distance = closest_t;
+            closest_sphere = Some(sphere);
+        }
+    }
+
+    match closest_sphere {
+        None => CLEAR_COLOR,
+        Some(sphere) => {
+            let origin = ray.origin - sphere.position;
+            let hit_point = origin + ray.direction * hit_distance;
+            let normal = hit_point.normalize();
+
+            let light_dir = Vec3::new(1.0, 1.0, 1.0).normalize();
+            let light_intensity = normal.dot(light_dir).max(0.0); // == cos(angle)
+
+            let mut sphere_color = sphere.albedo;
+            sphere_color *= light_intensity;
+
+            sphere_color.extend(1.0)
+        }
+    }
 }
 
 trait Vec4Ext {

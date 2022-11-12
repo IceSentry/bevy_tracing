@@ -1,32 +1,24 @@
 mod camera;
 mod renderer;
+mod scene;
+mod ui;
 
 use std::time::Instant;
 
 use bevy::{
+    math::vec3,
     prelude::*,
     render::render_resource::{
         Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
     },
     window::PresentMode,
 };
-use bevy_egui::{
-    egui::{self, TextureId},
-    EguiContext, EguiPlugin,
-};
+use bevy_egui::{EguiContext, EguiPlugin};
 use camera::{update_camera, ChernoCamera};
 use egui_dock::{DockArea, NodeIndex, Style, Tree};
 use renderer::Renderer;
-
-#[derive(Debug, Clone)]
-enum Tabs {
-    Viewport(TextureId),
-    Settings,
-    Scene,
-}
-
-#[derive(Deref, DerefMut)]
-struct DockTree(Tree<Tabs>);
+use scene::{Scene, Sphere};
+use ui::{DockTree, TabViewer, Tabs};
 
 struct ViewportImage(Handle<Image>);
 
@@ -39,8 +31,22 @@ fn main() {
         })
         .add_plugins(DefaultPlugins)
         .add_plugin(EguiPlugin)
-        .init_resource::<TabViewerRes>()
+        .init_resource::<TabViewer>()
         .insert_resource(ChernoCamera::new(45.0, 0.1, 100.0))
+        .insert_resource(Scene {
+            spheres: vec![
+                Sphere {
+                    position: Vec3::ZERO,
+                    radius: 0.5,
+                    albedo: vec3(1.0, 0.0, 1.0),
+                },
+                Sphere {
+                    position: vec3(1.0, 0.0, -5.0),
+                    radius: 1.5,
+                    albedo: vec3(0.2, 0.3, 1.0),
+                },
+            ],
+        })
         .add_startup_system(setup_viewport)
         .add_system(draw_dock_area)
         .add_system(resize_image.after(draw_dock_area))
@@ -87,7 +93,7 @@ fn setup_viewport(
 
     // Setup dock tree
     let mut tree = Tree::new(vec![Tabs::Viewport(image_id)]);
-    let [_viewport, scene] = tree.split_right(NodeIndex::root(), 0.6, vec![Tabs::Scene]);
+    let [_viewport, scene] = tree.split_right(NodeIndex::root(), 0.8, vec![Tabs::Scene]);
     tree.split_below(scene, 0.5, vec![Tabs::Settings]);
     commands.insert_resource(DockTree(tree));
 }
@@ -95,28 +101,31 @@ fn setup_viewport(
 fn draw_dock_area(
     mut egui_context: ResMut<EguiContext>,
     mut tree: ResMut<DockTree>,
-    mut tab_viewer: ResMut<TabViewerRes>,
+    mut tab_viewer: ResMut<TabViewer>,
     time: Res<Time>,
+    mut scene: ResMut<Scene>,
 ) {
     tab_viewer.dt = time.delta_seconds();
+    tab_viewer.scene = scene.clone();
     DockArea::new(&mut tree)
         .style(Style::from_egui(egui_context.ctx_mut().style().as_ref()))
         .show(egui_context.ctx_mut(), &mut *tab_viewer);
+    *scene = tab_viewer.scene.clone();
 }
 
 fn resize_image(
     viewport_image: Res<ViewportImage>,
     mut images: ResMut<Assets<Image>>,
-    tab_viewer: Res<TabViewerRes>,
+    tab_viewer: Res<TabViewer>,
     mut renderer: ResMut<Renderer>,
     mut camera: ResMut<ChernoCamera>,
 ) {
     let image = images.get_mut(&viewport_image.0).unwrap();
-    if image.size().x != tab_viewer.viewport_size.x || image.size().y != tab_viewer.viewport_size.y
-    {
+    let viewport_size = tab_viewer.viewport_size;
+    if image.size().x != viewport_size.x || image.size().y != viewport_size.y {
         let size = Extent3d {
-            width: tab_viewer.viewport_size.x as u32,
-            height: tab_viewer.viewport_size.y as u32,
+            width: viewport_size.x as u32,
+            height: viewport_size.y as u32,
             ..default()
         };
         // This also clears the image with 0
@@ -131,57 +140,29 @@ fn render(
     viewport_image: Res<ViewportImage>,
     mut images: ResMut<Assets<Image>>,
     mut renderer: ResMut<Renderer>,
-    mut tab_viewer: ResMut<TabViewerRes>,
+    mut tab_viewer: ResMut<TabViewer>,
     camera: Res<ChernoCamera>,
+    scene: Res<Scene>,
 ) {
     let start = Instant::now();
 
-    renderer.render(&camera);
+    {
+        let _render_span = info_span!("render").entered();
+        renderer.render(&camera, &scene);
+    }
 
     let elapsed = (Instant::now() - start).as_secs_f32();
     tab_viewer.render_dt = elapsed as f32;
 
     let image = images.get_mut(&viewport_image.0).unwrap();
-    // There's probably a more efficient way to do this using unsafe code, but it's good enough
-    image.data = renderer
-        .image_data
-        .iter()
-        .flatten()
-        .copied()
-        .collect::<Vec<u8>>();
-}
-
-#[derive(Default)]
-struct TabViewerRes {
-    viewport_size: Vec2,
-    dt: f32,
-    render_dt: f32,
-}
-
-impl egui_dock::TabViewer for TabViewerRes {
-    type Tab = Tabs;
-
-    fn ui(&mut self, ui: &mut egui::Ui, tab: &mut Self::Tab) {
-        match tab {
-            Tabs::Viewport(texture_id) => {
-                self.viewport_size = Vec2::from_array(ui.available_size().into());
-                ui.image(*texture_id, ui.available_size());
-            }
-            Tabs::Settings => {
-                ui.label(format!("Viewport size: {:?}", self.viewport_size));
-                ui.label(format!("dt: {}ms", self.dt * 1000.0));
-                ui.label(format!("render dt: {}ms", self.render_dt * 1000.0));
-            }
-            Tabs::Scene => {}
-        };
-    }
-
-    fn title(&mut self, tab: &mut Self::Tab) -> egui::WidgetText {
-        match tab {
-            Tabs::Viewport(_) => "Viewport",
-            Tabs::Settings => "Settings",
-            Tabs::Scene => "Scene",
-        }
-        .into()
+    {
+        let _image_span = info_span!("update image").entered();
+        // There's probably a more efficient way to do this using unsafe code, but it's good enough
+        image.data = renderer
+            .image_data
+            .iter()
+            .flatten()
+            .cloned()
+            .collect::<Vec<u8>>();
     }
 }

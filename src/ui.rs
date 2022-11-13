@@ -114,11 +114,11 @@ impl egui_dock::TabViewer for TabViewer {
                             ui.end_row();
 
                             ui.label("Roughness");
-                            drag_f32_clamp(ui, &mut material.roughness, 0.025, 0..=1);
+                            self.reset |= drag_f32_clamp(ui, &mut material.roughness, 0.025, 0..=1);
                             ui.end_row();
 
                             ui.label("Metallic");
-                            drag_f32_clamp(ui, &mut material.metallic, 0.025, 0..=1);
+                            self.reset |= drag_f32_clamp(ui, &mut material.metallic, 0.025, 0..=1);
                             ui.end_row();
                         });
                     ui.separator();
@@ -134,7 +134,7 @@ impl egui_dock::TabViewer for TabViewer {
                             ui.end_row();
 
                             ui.label("Radius");
-                            drag_f32(ui, &mut sphere.radius, 0.025);
+                            self.reset |= drag_f32(ui, &mut sphere.radius, 0.025);
                             ui.end_row();
 
                             ui.label("Material id");
@@ -161,7 +161,7 @@ impl egui_dock::TabViewer for TabViewer {
                 });
 
                 ui.checkbox(&mut self.accumulate, "Accumulate");
-                self.reset = ui.button("Reset").clicked();
+                self.reset |= ui.button("Reset").clicked();
             }
         };
     }
@@ -179,19 +179,32 @@ fn drag_vec3(ui: &mut egui::Ui, value: &mut Vec3, speed: f32) {
     });
 }
 
-fn drag_f32(ui: &mut egui::Ui, value: &mut f32, speed: f32) {
+fn drag_f32(ui: &mut egui::Ui, value: &mut f32, speed: f32) -> bool {
+    let mut changed = false;
     ui.columns(1, |ui| {
-        ui[0].add_sized([0.0, 0.0], egui::DragValue::new(value).speed(speed));
+        changed = ui[0]
+            .add_sized([0.0, 0.0], egui::DragValue::new(value).speed(speed))
+            .changed();
     });
+    changed
 }
 
-fn drag_f32_clamp(ui: &mut egui::Ui, value: &mut f32, speed: f32, range: RangeInclusive<usize>) {
+fn drag_f32_clamp(
+    ui: &mut egui::Ui,
+    value: &mut f32,
+    speed: f32,
+    range: RangeInclusive<usize>,
+) -> bool {
+    let mut changed = false;
     ui.columns(1, |ui| {
-        ui[0].add_sized(
-            [0.0, 0.0],
-            egui::DragValue::new(value).speed(speed).clamp_range(range),
-        );
+        changed = ui[0]
+            .add_sized(
+                [0.0, 0.0],
+                egui::DragValue::new(value).speed(speed).clamp_range(range),
+            )
+            .changed();
     });
+    changed
 }
 
 fn drag_u8(ui: &mut egui::Ui, value: &mut u8, speed: f32) {

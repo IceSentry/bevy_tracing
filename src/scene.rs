@@ -4,6 +4,7 @@ use bevy::prelude::*;
 pub struct Scene {
     pub materials: Vec<Material>,
     pub spheres: Vec<Sphere>,
+    pub lights: Vec<Light>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -38,4 +39,10 @@ impl Default for Sphere {
             material_id: 0,
         }
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Light {
+    pub direction: Vec3,
+    pub intensity: f32,
 }

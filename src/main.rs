@@ -17,7 +17,7 @@ use bevy_egui::{egui::TextureId, EguiContext, EguiPlugin};
 use camera::{update_camera, ChernoCamera};
 
 use renderer::Renderer;
-use scene::{Material, Scene, Sphere};
+use scene::{Light, Material, Scene, Sphere};
 use ui::{draw_dock_area, setup_ui};
 
 #[derive(Resource)]
@@ -47,6 +47,10 @@ fn main() {
         .insert_resource(ChernoCamera::new(45.0, 0.1, 100.0))
         .insert_resource(Scene {
             // TODO maybe 0 should be default
+            lights: vec![Light {
+                direction: vec3(1.0, 1.0, 1.0),
+                intensity: 1.0,
+            }],
             materials: vec![
                 Material {
                     albedo: vec3(1.0, 0.0, 1.0),
@@ -54,7 +58,7 @@ fn main() {
                     ..default()
                 },
                 Material {
-                    albedo: vec3(0.2, 0.3, 1.0),
+                    albedo: vec3(0.0, 0.0, 0.0),
                     roughness: 0.1,
                     ..default()
                 },

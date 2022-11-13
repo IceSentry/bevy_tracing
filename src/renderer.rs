@@ -111,8 +111,10 @@ fn per_pixel(scene: &Scene, camera: &ChernoCamera, pixel_index: usize, bounces: 
                 break;
             }
             Some(payload) => {
-                let light_dir = Vec3::new(1.0, 1.0, 1.0).normalize();
-                let light_intensity = payload.world_normal.dot(light_dir).max(0.0); // == cos(angle)
+                let light = scene.lights[0];
+                let light_dir = light.direction.normalize();
+                let light_intensity =
+                    payload.world_normal.dot(light_dir).max(0.0) * light.intensity; // == cos(angle)
 
                 let sphere = scene.spheres[payload.object_index];
                 let material = scene.materials[sphere.material_id];

@@ -104,6 +104,22 @@ impl egui_dock::TabViewer for TabViewer {
                     });
                 ui.separator();
 
+                ui.heading("Lights");
+                for (i, light) in self.scene.lights.iter_mut().enumerate() {
+                    egui::Grid::new(format!("light_grid_{i}"))
+                        .num_columns(2)
+                        .show(ui, |ui| {
+                            ui.label("Direction");
+                            self.reset |= drag_vec3(ui, &mut light.direction, 0.025);
+                            ui.end_row();
+
+                            ui.label("Intensity");
+                            self.reset |= drag_f32_clamp(ui, &mut light.intensity, 0.025, 0..=1);
+                            ui.end_row();
+                        });
+                    ui.separator();
+                }
+
                 ui.heading("Materials");
                 for (i, material) in self.scene.materials.iter_mut().enumerate() {
                     egui::Grid::new(format!("material_grid_{i}"))

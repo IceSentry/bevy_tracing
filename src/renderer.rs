@@ -3,6 +3,7 @@ use bevy::{
     prelude::*,
 };
 use nanorand::Rng;
+use rayon::prelude::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
 use crate::{camera::ChernoCamera, scene::Scene};
 
@@ -51,6 +52,8 @@ impl Renderer {
         self.image_data.resize(width * height, [0, 0, 0, 0]);
 
         self.accumulation_data.resize(width * height, Vec4::ZERO);
+
+        self.reset_frame_index();
     }
 
     pub fn render(&mut self, camera: &ChernoCamera, scene: &Scene, bounces: u8) {
@@ -58,20 +61,20 @@ impl Renderer {
             self.accumulation_data.fill(Vec4::ZERO);
         }
 
-        for y in 0..self.height {
-            for x in 0..self.width {
-                let pixel_index = x + y * self.width;
-
+        self.image_data
+            .par_iter_mut()
+            .zip(&mut self.accumulation_data)
+            .enumerate()
+            .for_each(|(pixel_index, (pixel, accumulated_pixel))| {
                 let color = per_pixel(scene, camera, pixel_index, bounces);
 
-                self.accumulation_data[pixel_index] += color;
-                let mut accumulated_color = self.accumulation_data[pixel_index];
+                *accumulated_pixel += color;
+                let mut accumulated_color = *accumulated_pixel;
                 accumulated_color /= self.frame_index as f32;
 
-                let clamped_color = accumulated_color.clamp(Vec4::ZERO, Vec4::ONE);
-                self.image_data[pixel_index] = clamped_color.as_u8_array();
-            }
-        }
+                let color = accumulated_color.clamp(Vec4::ZERO, Vec4::ONE);
+                *pixel = color.as_u8_array();
+            });
 
         if self.accumulate {
             self.frame_index += 1;

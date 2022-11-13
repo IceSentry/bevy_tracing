@@ -1015,6 +1015,7 @@ dependencies = [
  "egui_dock",
  "image 0.24.4",
  "nanorand",
+ "rayon",
 ]
 
 [[package]]

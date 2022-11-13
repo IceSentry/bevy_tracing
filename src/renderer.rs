@@ -5,7 +5,10 @@ use bevy::{
 use nanorand::Rng;
 use rayon::prelude::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
-use crate::{camera::ChernoCamera, scene::Scene};
+use crate::{
+    camera::ChernoCamera,
+    scene::{Scene, Sphere},
+};
 
 const SKY_COLOR: Vec4 = vec4(0.6, 0.7, 0.9, 1.0);
 
@@ -153,25 +156,34 @@ fn trace_ray(ray: &Ray, scene: &Scene) -> Option<HitPayload> {
     let mut closest_object: Option<usize> = None;
     let mut hit_distance = f32::MAX;
     for (i, sphere) in scene.spheres.iter().enumerate() {
-        let origin = ray.origin - sphere.position;
-
-        let a = ray.direction.dot(ray.direction);
-        let b = 2.0 * origin.dot(ray.direction);
-        let c = origin.dot(origin) - sphere.radius * sphere.radius;
-
-        let discriminant = b * b - 4.0 * a * c;
-        if discriminant < 0.0 {
-            continue;
-        }
-
-        let closest_t = (-b - discriminant.sqrt()) / (2.0 * a);
-        // let _t0 = (-b + discriminant.sqrt()) / (2.0 * a);
-        if closest_t > 0.0 && closest_t < hit_distance {
-            hit_distance = closest_t;
-            closest_object = Some(i);
+        match sphere_intersect(ray, sphere) {
+            None => continue,
+            Some(closest_t) => {
+                if closest_t > 0.0 && closest_t < hit_distance {
+                    hit_distance = closest_t;
+                    closest_object = Some(i);
+                }
+            }
         }
     }
     closest_object.map(|object_index| closest_hit(scene, ray, hit_distance, object_index))
+}
+
+fn sphere_intersect(ray: &Ray, sphere: &Sphere) -> Option<f32> {
+    let origin = ray.origin - sphere.position;
+
+    let a = ray.direction.dot(ray.direction);
+    let b = 2.0 * origin.dot(ray.direction);
+    let c = origin.dot(origin) - sphere.radius * sphere.radius;
+
+    let discriminant = b * b - 4.0 * a * c;
+    if discriminant < 0.0 {
+        return None;
+    }
+
+    let closest_t = (-b - discriminant.sqrt()) / (2.0 * a);
+    // let _t0 = (-b + discriminant.sqrt()) / (2.0 * a);
+    Some(closest_t)
 }
 
 trait Vec4Ext {

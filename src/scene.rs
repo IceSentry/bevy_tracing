@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Resource)]
 pub struct Scene {
     pub materials: Vec<Material>,
     pub spheres: Vec<Sphere>,

@@ -1,8 +1,8 @@
-use bevy::{input::mouse::MouseMotion, math::Vec4Swizzles, prelude::*};
+use bevy::{input::mouse::MouseMotion, math::Vec4Swizzles, prelude::*, window::CursorGrabMode};
 
 use crate::renderer::Renderer;
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Resource)]
 pub struct ChernoCamera {
     pub projection: Mat4,
     pub view: Mat4,
@@ -98,14 +98,19 @@ pub fn update_camera(
     mut windows: ResMut<Windows>,
     mut renderer: ResMut<Renderer>,
 ) {
+    let mouse_motion_delta = mouse_motion_events
+        .iter()
+        .map(|mouse_motion| mouse_motion.delta)
+        .last();
+
     let window = windows.primary_mut();
     if !mouse_button_input.pressed(MouseButton::Right) {
         window.set_cursor_visibility(true);
-        window.set_cursor_lock_mode(false);
+        window.set_cursor_grab_mode(CursorGrabMode::None);
         return;
     }
     window.set_cursor_visibility(false);
-    window.set_cursor_lock_mode(true);
+    window.set_cursor_grab_mode(CursorGrabMode::Confined);
 
     let mut moved = false;
 
@@ -140,11 +145,11 @@ pub fn update_camera(
         moved = true;
     }
 
-    if let Some(mouse_motion) = mouse_motion_events.iter().next() {
-        // rotation
-        if mouse_motion.delta.x != 0.0 || mouse_motion.delta.y != 0.0 {
-            let pitch_delta = mouse_motion.delta.y * rotation_speed * time.delta_seconds();
-            let yaw_delta = mouse_motion.delta.x * rotation_speed * time.delta_seconds();
+    // rotation
+    if let Some(delta) = mouse_motion_delta {
+        if delta.x != 0.0 || delta.y != 0.0 {
+            let pitch_delta = delta.y * rotation_speed * time.delta_seconds();
+            let yaw_delta = delta.x * rotation_speed * time.delta_seconds();
             let q = Quat::from_axis_angle(right_direction, -pitch_delta)
                 * Quat::from_axis_angle(up_direction, -yaw_delta);
             camera.forward_direction = q.normalize() * forward_direction;

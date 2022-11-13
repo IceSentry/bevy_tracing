@@ -20,21 +20,27 @@ use renderer::Renderer;
 use scene::{Material, Scene, Sphere};
 use ui::{draw_dock_area, setup_ui};
 
+#[derive(Resource)]
 struct ViewportImage(Handle<Image>);
+#[derive(Resource)]
 pub struct ViewportEguiTexture(pub TextureId);
+#[derive(Resource)]
 pub struct ViewportSize(pub Vec2);
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Resource)]
 pub struct RenderDt(pub f32);
+#[derive(Resource)]
 pub struct Bounces(pub u8);
 
 fn main() {
     App::new()
-        .insert_resource(WindowDescriptor {
-            title: "Cherno Tracing".to_string(),
-            present_mode: PresentMode::AutoNoVsync,
-            ..Default::default()
-        })
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            window: WindowDescriptor {
+                title: "Cherno Tracing".to_string(),
+                present_mode: PresentMode::AutoNoVsync,
+                ..default()
+            },
+            ..default()
+        }))
         .add_plugin(EguiPlugin)
         .init_resource::<RenderDt>()
         .insert_resource(Bounces(5))

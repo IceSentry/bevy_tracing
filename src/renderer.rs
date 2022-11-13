@@ -26,7 +26,7 @@ struct HitPayload {
     object_index: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Resource)]
 pub struct Renderer {
     pub image_data: Vec<[u8; 4]>,
     pub accumulation_data: Vec<Vec4>,

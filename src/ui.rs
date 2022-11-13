@@ -19,7 +19,7 @@ pub enum Tabs {
     Scene,
 }
 
-#[derive(Deref, DerefMut)]
+#[derive(Deref, DerefMut, Resource)]
 pub struct DockTree(pub Tree<Tabs>);
 
 pub fn setup_ui(mut commands: Commands) {

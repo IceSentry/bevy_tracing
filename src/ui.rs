@@ -1,4 +1,4 @@
-use crate::{scene::Scene, RenderDt, ViewportEguiTexture, ViewportSize};
+use crate::{scene::Scene, Bounces, RenderDt, ViewportEguiTexture, ViewportSize};
 
 use bevy::prelude::*;
 use bevy_egui::{
@@ -25,6 +25,7 @@ pub fn setup_ui(mut commands: Commands) {
     commands.insert_resource(DockTree(tree));
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn draw_dock_area(
     mut egui_context: ResMut<EguiContext>,
     mut tree: ResMut<DockTree>,
@@ -33,6 +34,7 @@ pub fn draw_dock_area(
     viewport_egui_texture: Res<ViewportEguiTexture>,
     mut viewport_size: ResMut<ViewportSize>,
     render_dt: Res<RenderDt>,
+    mut bounces: ResMut<Bounces>,
 ) {
     let mut tab_viewer = TabViewer {
         viewport_texture: viewport_egui_texture.0,
@@ -40,6 +42,7 @@ pub fn draw_dock_area(
         dt: time.delta_seconds(),
         render_dt: render_dt.0,
         scene: scene.clone(),
+        bounces: bounces.0,
     };
 
     DockArea::new(&mut tree)
@@ -48,6 +51,7 @@ pub fn draw_dock_area(
 
     *scene = tab_viewer.scene.clone();
     viewport_size.0 = tab_viewer.viewport_size;
+    bounces.0 = tab_viewer.bounces;
 }
 
 #[derive(Default)]
@@ -57,6 +61,7 @@ pub struct TabViewer {
     pub dt: f32,
     pub render_dt: f32,
     pub scene: Scene,
+    pub bounces: u8,
 }
 
 impl egui_dock::TabViewer for TabViewer {
@@ -72,6 +77,8 @@ impl egui_dock::TabViewer for TabViewer {
                 ui.label(format!("Viewport size: {:?}", self.viewport_size));
                 ui.label(format!("dt: {}ms", self.dt * 1000.0));
                 ui.label(format!("render dt: {}ms", self.render_dt * 1000.0));
+
+                drag_u8(ui, &mut self.bounces, 1.0);
             }
             Tabs::Scene => {
                 ui.label("Spheres");
@@ -112,6 +119,12 @@ fn drag_vec3(ui: &mut egui::Ui, value: &mut Vec3, speed: f32) {
 }
 
 fn drag_f32(ui: &mut egui::Ui, value: &mut f32, speed: f32) {
+    ui.columns(1, |ui| {
+        ui[0].add_sized([0.0, 0.0], egui::DragValue::new(value).speed(speed));
+    });
+}
+
+fn drag_u8(ui: &mut egui::Ui, value: &mut u8, speed: f32) {
     ui.columns(1, |ui| {
         ui[0].add_sized([0.0, 0.0], egui::DragValue::new(value).speed(speed));
     });

@@ -25,6 +25,7 @@ pub struct ViewportEguiTexture(pub TextureId);
 pub struct ViewportSize(pub Vec2);
 #[derive(Debug, Default)]
 pub struct RenderDt(pub f32);
+pub struct Bounces(pub u8);
 
 fn main() {
     App::new()
@@ -36,6 +37,7 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(EguiPlugin)
         .init_resource::<RenderDt>()
+        .insert_resource(Bounces(2))
         .insert_resource(ChernoCamera::new(45.0, 0.1, 100.0))
         .insert_resource(Scene {
             spheres: vec![
@@ -130,12 +132,13 @@ fn render(
     mut render_dt: ResMut<RenderDt>,
     camera: Res<ChernoCamera>,
     scene: Res<Scene>,
+    bounces: Res<Bounces>,
 ) {
     let start = Instant::now();
 
     {
         let _render_span = info_span!("render").entered();
-        renderer.render(&camera, &scene);
+        renderer.render(&camera, &scene, bounces.0);
     }
 
     let elapsed = (Instant::now() - start).as_secs_f32();

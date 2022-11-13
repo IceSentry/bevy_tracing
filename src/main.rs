@@ -17,7 +17,7 @@ use bevy_egui::{egui::TextureId, EguiContext, EguiPlugin};
 use camera::{update_camera, ChernoCamera};
 
 use renderer::Renderer;
-use scene::{Scene, Sphere};
+use scene::{Material, Scene, Sphere};
 use ui::{draw_dock_area, setup_ui};
 
 struct ViewportImage(Handle<Image>);
@@ -37,19 +37,32 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(EguiPlugin)
         .init_resource::<RenderDt>()
-        .insert_resource(Bounces(2))
+        .insert_resource(Bounces(5))
         .insert_resource(ChernoCamera::new(45.0, 0.1, 100.0))
         .insert_resource(Scene {
+            // TODO maybe 0 should be default
+            materials: vec![
+                Material {
+                    albedo: vec3(1.0, 0.0, 1.0),
+                    roughness: 0.0,
+                    ..default()
+                },
+                Material {
+                    albedo: vec3(0.2, 0.3, 1.0),
+                    roughness: 0.1,
+                    ..default()
+                },
+            ],
             spheres: vec![
                 Sphere {
                     position: Vec3::ZERO,
-                    radius: 0.5,
-                    albedo: vec3(1.0, 0.0, 1.0),
+                    radius: 1.0,
+                    material_id: 0,
                 },
                 Sphere {
-                    position: vec3(1.0, 0.0, -5.0),
-                    radius: 1.5,
-                    albedo: vec3(0.2, 0.3, 1.0),
+                    position: vec3(0.0, -101.0, 0.0),
+                    radius: 100.0,
+                    material_id: 1,
                 },
             ],
         })

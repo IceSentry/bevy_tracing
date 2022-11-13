@@ -1,6 +1,8 @@
 use bevy::{input::mouse::MouseMotion, math::Vec4Swizzles, prelude::*};
 
-#[derive(Debug, Default)]
+use crate::renderer::Renderer;
+
+#[derive(Debug, Default, Clone)]
 pub struct ChernoCamera {
     pub projection: Mat4,
     pub view: Mat4,
@@ -26,8 +28,8 @@ impl ChernoCamera {
             vertical_fov,
             near_clip,
             far_clip,
-            forward_direction: Vec3::new(0.0, 0.0, -1.0),
-            position: Vec3::new(0.0, 0.0, 3.0),
+            forward_direction: Vec3::NEG_Z,
+            position: Vec3::new(0.0, 0.0, 6.0),
             ..Default::default()
         }
     }
@@ -94,6 +96,7 @@ pub fn update_camera(
     keyboard_input: Res<Input<KeyCode>>,
     time: Res<Time>,
     mut windows: ResMut<Windows>,
+    mut renderer: ResMut<Renderer>,
 ) {
     let window = windows.primary_mut();
     if !mouse_button_input.pressed(MouseButton::Right) {
@@ -153,5 +156,6 @@ pub fn update_camera(
     if moved {
         camera.recalculate_view();
         camera.recalculate_ray_directions();
+        renderer.reset_frame_index();
     }
 }

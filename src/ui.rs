@@ -99,7 +99,7 @@ impl egui_dock::TabViewer for TabViewer {
                     .num_columns(2)
                     .show(ui, |ui| {
                         ui.label("Position");
-                        drag_vec3(ui, &mut self.camera.position, 0.1);
+                        self.reset |= drag_vec3(ui, &mut self.camera.position, 0.1);
                         ui.end_row();
                     });
                 ui.separator();
@@ -110,7 +110,7 @@ impl egui_dock::TabViewer for TabViewer {
                         .num_columns(2)
                         .show(ui, |ui| {
                             ui.label("Albedo");
-                            drag_vec3_color(ui, &mut material.albedo);
+                            self.reset |= drag_vec3_color(ui, &mut material.albedo);
                             ui.end_row();
 
                             ui.label("Roughness");
@@ -130,7 +130,7 @@ impl egui_dock::TabViewer for TabViewer {
                         .num_columns(2)
                         .show(ui, |ui| {
                             ui.label("Position");
-                            drag_vec3(ui, &mut sphere.position, 0.1);
+                            self.reset |= drag_vec3(ui, &mut sphere.position, 0.1);
                             ui.end_row();
 
                             ui.label("Radius");
@@ -138,7 +138,7 @@ impl egui_dock::TabViewer for TabViewer {
                             ui.end_row();
 
                             ui.label("Material id");
-                            drag_usize(
+                            self.reset |= drag_usize(
                                 ui,
                                 &mut sphere.material_id,
                                 1.0,
@@ -150,14 +150,19 @@ impl egui_dock::TabViewer for TabViewer {
                 }
             }
             Tabs::Settings => {
-                ui.label(format!("Viewport size: {:?}", self.viewport_size));
+                ui.label(format!(
+                    "Viewport size: {}x{} ({} pixels)",
+                    self.viewport_size.x,
+                    self.viewport_size.y,
+                    fmt_usize_separator((self.viewport_size.x * self.viewport_size.y) as usize)
+                ));
                 ui.label(format!("dt: {}ms", self.dt * 1000.0));
-                ui.label(format!("render dt: {}ms", self.render_dt * 1000.0));
+                ui.label(format!("Render dt: {}ms", self.render_dt * 1000.0));
                 ui.label(format!("Frame index: {}", self.frame_index));
 
                 ui.horizontal(|ui| {
                     ui.label("Bounces");
-                    drag_u8(ui, &mut self.bounces, 0.25);
+                    self.reset |= drag_u8(ui, &mut self.bounces, 0.25);
                 });
 
                 ui.checkbox(&mut self.accumulate, "Accumulate");
@@ -171,12 +176,20 @@ impl egui_dock::TabViewer for TabViewer {
     }
 }
 
-fn drag_vec3(ui: &mut egui::Ui, value: &mut Vec3, speed: f32) {
+fn drag_vec3(ui: &mut egui::Ui, value: &mut Vec3, speed: f32) -> bool {
+    let mut changed = false;
     ui.columns(3, |ui| {
-        ui[0].add_sized([0.0, 0.0], egui::DragValue::new(&mut value.x).speed(speed));
-        ui[1].add_sized([0.0, 0.0], egui::DragValue::new(&mut value.y).speed(speed));
-        ui[2].add_sized([0.0, 0.0], egui::DragValue::new(&mut value.z).speed(speed));
+        changed |= ui[0]
+            .add_sized([0.0, 0.0], egui::DragValue::new(&mut value.x).speed(speed))
+            .changed();
+        changed |= ui[1]
+            .add_sized([0.0, 0.0], egui::DragValue::new(&mut value.y).speed(speed))
+            .changed();
+        changed |= ui[2]
+            .add_sized([0.0, 0.0], egui::DragValue::new(&mut value.z).speed(speed))
+            .changed();
     });
+    changed
 }
 
 fn drag_f32(ui: &mut egui::Ui, value: &mut f32, speed: f32) -> bool {
@@ -207,54 +220,82 @@ fn drag_f32_clamp(
     changed
 }
 
-fn drag_u8(ui: &mut egui::Ui, value: &mut u8, speed: f32) {
+fn drag_u8(ui: &mut egui::Ui, value: &mut u8, speed: f32) -> bool {
+    let mut changed = false;
     ui.columns(1, |ui| {
-        ui[0].add_sized([0.0, 0.0], egui::DragValue::new(value).speed(speed));
+        changed |= ui[0]
+            .add_sized([0.0, 0.0], egui::DragValue::new(value).speed(speed))
+            .changed();
     });
+    changed
 }
 
-fn drag_usize(ui: &mut egui::Ui, value: &mut usize, speed: f32, max: usize) {
+fn drag_usize(ui: &mut egui::Ui, value: &mut usize, speed: f32, max: usize) -> bool {
+    let mut changed = false;
     ui.columns(1, |ui| {
-        ui[0].add_sized(
-            [0.0, 0.0],
-            egui::DragValue::new(value)
-                .speed(speed)
-                .clamp_range(0..=max),
-        );
+        changed |= ui[0]
+            .add_sized(
+                [0.0, 0.0],
+                egui::DragValue::new(value)
+                    .speed(speed)
+                    .clamp_range(0..=max),
+            )
+            .changed();
     });
+    changed
 }
 
-fn drag_vec3_color(ui: &mut egui::Ui, value: &mut Vec3) {
+fn drag_vec3_color(ui: &mut egui::Ui, value: &mut Vec3) -> bool {
+    let mut changed = false;
     let speed = 0.0025;
     let size = [40.0, 20.0];
     ui.columns(4, |ui| {
-        ui[0].add_sized(
-            size,
-            egui::DragValue::new(&mut value.x)
-                .speed(speed)
-                .prefix("R: ")
-                .clamp_range(0.0..=1.0)
-                .fixed_decimals(1),
-        );
-        ui[1].add_sized(
-            size,
-            egui::DragValue::new(&mut value.y)
-                .speed(speed)
-                .prefix("G: ")
-                .clamp_range(0.0..=1.0)
-                .fixed_decimals(1),
-        );
-        ui[2].add_sized(
-            size,
-            egui::DragValue::new(&mut value.z)
-                .speed(speed)
-                .prefix("B: ")
-                .clamp_range(0.0..=1.0)
-                .fixed_decimals(1),
-        );
+        changed |= ui[0]
+            .add_sized(
+                size,
+                egui::DragValue::new(&mut value.x)
+                    .speed(speed)
+                    .prefix("R: ")
+                    .clamp_range(0.0..=1.0)
+                    .fixed_decimals(1),
+            )
+            .changed();
+        changed |= ui[1]
+            .add_sized(
+                size,
+                egui::DragValue::new(&mut value.y)
+                    .speed(speed)
+                    .prefix("G: ")
+                    .clamp_range(0.0..=1.0)
+                    .fixed_decimals(1),
+            )
+            .changed();
+        changed |= ui[2]
+            .add_sized(
+                size,
+                egui::DragValue::new(&mut value.z)
+                    .speed(speed)
+                    .prefix("B: ")
+                    .clamp_range(0.0..=1.0)
+                    .fixed_decimals(1),
+            )
+            .changed();
 
         let mut color = value.to_array();
-        ui[3].color_edit_button_rgb(&mut color);
+        changed |= ui[3].color_edit_button_rgb(&mut color).changed();
         *value = Vec3::from_array(color);
     });
+    changed
+}
+
+fn fmt_usize_separator(value: usize) -> String {
+    let mut s = String::new();
+    let str = value.to_string();
+    for (i, val) in str.chars().rev().enumerate() {
+        if i != 0 && i % 3 == 0 {
+            s.insert(0, '_');
+        }
+        s.insert(0, val);
+    }
+    s
 }

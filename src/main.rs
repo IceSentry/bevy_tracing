@@ -58,17 +58,47 @@ fn main() {
                     roughness: 0.1,
                     ..default()
                 },
+                Material {
+                    albedo: vec3(1.0, 0.0, 0.0),
+                    roughness: 0.0,
+                    ..default()
+                },
+                Material {
+                    albedo: vec3(0.0, 1.0, 0.0),
+                    roughness: 0.0,
+                    ..default()
+                },
+                Material {
+                    albedo: vec3(0.0, 0.0, 1.0),
+                    roughness: 0.0,
+                    ..default()
+                },
             ],
             spheres: vec![
-                Sphere {
-                    position: Vec3::ZERO,
-                    radius: 1.0,
-                    material_id: 0,
-                },
+                // Sphere {
+                //     position: Vec3::ZERO,
+                //     radius: 1.0,
+                //     material_id: 0,
+                // },
                 Sphere {
                     position: vec3(0.0, -101.0, 0.0),
                     radius: 100.0,
                     material_id: 1,
+                },
+                Sphere {
+                    position: vec3(-1.25, -0.5, 0.0),
+                    radius: 0.5,
+                    material_id: 2,
+                },
+                Sphere {
+                    position: vec3(0.0, -0.5, 0.0),
+                    radius: 0.5,
+                    material_id: 3,
+                },
+                Sphere {
+                    position: vec3(1.25, -0.5, 0.0),
+                    radius: 0.5,
+                    material_id: 4,
                 },
             ],
         })

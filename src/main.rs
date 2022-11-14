@@ -30,6 +30,8 @@ pub struct ViewportSize(pub Vec2);
 pub struct RenderDt(pub f32);
 #[derive(Resource)]
 pub struct Bounces(pub u8);
+#[derive(Resource)]
+pub struct SkyColor(pub Vec4);
 
 fn main() {
     App::new()
@@ -46,7 +48,7 @@ fn main() {
         .insert_resource(Bounces(5))
         .insert_resource(ChernoCamera::new(45.0, 0.1, 100.0))
         .insert_resource(Scene {
-            // TODO maybe 0 should be default
+            sky_color: vec3(0.6, 0.7, 0.9),
             lights: vec![Light {
                 direction: vec3(1.0, 1.0, 1.0),
                 intensity: 1.0,

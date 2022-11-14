@@ -104,6 +104,14 @@ impl egui_dock::TabViewer for TabViewer {
                     });
                 ui.separator();
 
+                ui.heading("Sky");
+                egui::Grid::new("sky_grid").num_columns(2).show(ui, |ui| {
+                    ui.label("Color");
+                    self.reset |= drag_vec3_color(ui, &mut self.scene.sky_color);
+                    ui.end_row();
+                });
+                ui.separator();
+
                 ui.heading("Lights");
                 for (i, light) in self.scene.lights.iter_mut().enumerate() {
                     egui::Grid::new(format!("light_grid_{i}"))
@@ -264,7 +272,7 @@ fn drag_usize(ui: &mut egui::Ui, value: &mut usize, speed: f32, max: usize) -> b
 fn drag_vec3_color(ui: &mut egui::Ui, value: &mut Vec3) -> bool {
     let mut changed = false;
     let speed = 0.0025;
-    let size = [40.0, 20.0];
+    let size = [0.0, 0.0];
     ui.columns(4, |ui| {
         changed |= ui[0]
             .add_sized(

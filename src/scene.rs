@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 #[derive(Debug, Default, Clone, Resource)]
 pub struct Scene {
+    pub sky_color: Vec3,
     pub materials: Vec<Material>,
     pub spheres: Vec<Sphere>,
     pub lights: Vec<Light>,

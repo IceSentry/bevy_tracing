@@ -1,7 +1,4 @@
-use bevy::{
-    math::{vec4, Vec4Swizzles},
-    prelude::*,
-};
+use bevy::prelude::*;
 use nanorand::Rng;
 use rayon::prelude::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
@@ -9,8 +6,6 @@ use crate::{
     camera::ChernoCamera,
     scene::{Scene, Sphere},
 };
-
-const SKY_COLOR: Vec4 = vec4(0.6, 0.7, 0.9, 1.0);
 
 #[derive(Debug, Clone, Copy)]
 struct Ray {
@@ -107,7 +102,7 @@ fn per_pixel(scene: &Scene, camera: &ChernoCamera, pixel_index: usize, bounces: 
     for _ in 0..bounces {
         match trace_ray(&ray, scene) {
             None => {
-                color += SKY_COLOR.xyz() * multiplier;
+                color += scene.sky_color * multiplier;
                 break;
             }
             Some(payload) => {

@@ -52,7 +52,7 @@ pub fn draw_dock_area(
         camera: camera.clone(),
         bounces: bounces.0,
         reset: false,
-        frame_index: renderer.frame_index,
+        samples: renderer.samples,
         accumulate: renderer.accumulate,
     };
 
@@ -80,7 +80,7 @@ pub struct TabViewer {
     pub bounces: u8,
     pub camera: ChernoCamera,
     pub reset: bool,
-    pub frame_index: usize,
+    pub samples: usize,
     pub accumulate: bool,
 }
 
@@ -174,7 +174,7 @@ impl egui_dock::TabViewer for TabViewer {
                 ));
                 ui.label(format!("dt: {}ms", self.dt * 1000.0));
                 ui.label(format!("Render dt: {}ms", self.render_dt * 1000.0));
-                ui.label(format!("Frame index: {}", self.frame_index));
+                ui.label(format!("Samples: {}", self.samples));
 
                 ui.horizontal(|ui| {
                     ui.label("Bounces");

@@ -32,7 +32,7 @@ pub struct Renderer {
     pub accumulation_data: Vec<Vec4>,
     pub width: usize,
     pub height: usize,
-    pub frame_index: usize,
+    pub samples: usize,
     pub accumulate: bool,
 }
 
@@ -43,7 +43,7 @@ impl Renderer {
             accumulation_data: vec![Vec4::ZERO; width * height],
             width,
             height,
-            frame_index: 1,
+            samples: 1,
             accumulate: true,
         }
     }
@@ -60,7 +60,7 @@ impl Renderer {
     }
 
     pub fn render(&mut self, camera: &ChernoCamera, scene: &Scene, bounces: u8) {
-        if self.frame_index == 1 {
+        if self.samples == 1 {
             self.accumulation_data.fill(Vec4::ZERO);
         }
 
@@ -73,21 +73,21 @@ impl Renderer {
 
                 *accumulated_pixel += color;
                 let mut accumulated_color = *accumulated_pixel;
-                accumulated_color /= self.frame_index as f32;
+                accumulated_color /= self.samples as f32;
 
                 let color = accumulated_color.clamp(Vec4::ZERO, Vec4::ONE);
                 *pixel = color.as_u8_array();
             });
 
         if self.accumulate {
-            self.frame_index += 1;
+            self.samples += 1;
         } else {
-            self.frame_index = 1;
+            self.samples = 1;
         }
     }
 
     pub fn reset_frame_index(&mut self) {
-        self.frame_index = 1;
+        self.samples = 1;
     }
 }
 

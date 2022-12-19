@@ -197,7 +197,7 @@ fn render(
     }
 
     let elapsed = (Instant::now() - start).as_secs_f32();
-    render_dt.0 = elapsed as f32;
+    render_dt.0 = elapsed;
 
     let image = images.get_mut(&viewport_image.0).unwrap();
     {

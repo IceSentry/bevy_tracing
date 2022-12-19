@@ -45,12 +45,12 @@ pub fn draw_dock_area(
 ) {
     let mut tab_viewer = TabViewer {
         viewport_texture: viewport_egui_texture.0,
-        viewport_size: viewport_size.0,
+        viewport_size: &mut viewport_size.0,
         dt: time.delta_seconds(),
         render_dt: render_dt.0,
-        scene: scene.clone(),
-        camera: camera.clone(),
-        bounces: bounces.0,
+        scene: &mut scene,
+        camera: &mut camera,
+        bounces: &mut bounces.0,
         reset: false,
         samples: renderer.samples,
         accumulate: renderer.accumulate,
@@ -60,37 +60,32 @@ pub fn draw_dock_area(
         .style(Style::from_egui(egui_context.ctx_mut().style().as_ref()))
         .show(egui_context.ctx_mut(), &mut tab_viewer);
 
-    *scene = tab_viewer.scene.clone();
-    *camera = tab_viewer.camera.clone();
-    viewport_size.0 = tab_viewer.viewport_size;
-    bounces.0 = tab_viewer.bounces;
     if tab_viewer.reset {
         renderer.reset_frame_index();
     }
     renderer.accumulate = tab_viewer.accumulate;
 }
 
-#[derive(Default)]
-pub struct TabViewer {
+pub struct TabViewer<'a> {
     pub viewport_texture: TextureId,
-    pub viewport_size: Vec2,
+    pub viewport_size: &'a mut Vec2,
     pub dt: f32,
     pub render_dt: f32,
-    pub scene: Scene,
-    pub bounces: u8,
-    pub camera: ChernoCamera,
+    pub scene: &'a mut Scene,
+    pub bounces: &'a mut u8,
+    pub camera: &'a mut ChernoCamera,
     pub reset: bool,
     pub samples: usize,
     pub accumulate: bool,
 }
 
-impl egui_dock::TabViewer for TabViewer {
+impl<'a> egui_dock::TabViewer for TabViewer<'a> {
     type Tab = Tabs;
 
     fn ui(&mut self, ui: &mut egui::Ui, tab: &mut Self::Tab) {
         match tab {
             Tabs::Viewport => {
-                self.viewport_size = Vec2::from_array(ui.available_size().into());
+                *self.viewport_size = Vec2::from_array(ui.available_size().into());
                 ui.image(self.viewport_texture, ui.available_size());
             }
             Tabs::Scene => {
@@ -180,13 +175,13 @@ impl egui_dock::TabViewer for TabViewer {
                     self.viewport_size.y,
                     fmt_usize_separator((self.viewport_size.x * self.viewport_size.y) as usize)
                 ));
-                ui.label(format!("dt: {}ms", self.dt * 1000.0));
-                ui.label(format!("Render dt: {}ms", self.render_dt * 1000.0));
+                ui.label(format!("dt: {:.2}ms", self.dt * 1000.0));
+                ui.label(format!("Render dt: {:.2}ms", self.render_dt * 1000.0));
                 ui.label(format!("Samples: {}", self.samples));
 
                 ui.horizontal(|ui| {
                     ui.label("Bounces");
-                    self.reset |= drag_u8(ui, &mut self.bounces, 0.25);
+                    self.reset |= drag_u8(ui, self.bounces, 0.25);
                 });
 
                 ui.checkbox(&mut self.accumulate, "Accumulate");

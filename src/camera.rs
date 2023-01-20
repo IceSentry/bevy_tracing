@@ -1,4 +1,7 @@
 use bevy::{input::mouse::MouseMotion, math::Vec4Swizzles, prelude::*, window::CursorGrabMode};
+use rayon::prelude::{
+    IndexedParallelIterator, IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator,
+};
 
 use crate::renderer::Renderer;
 
@@ -71,8 +74,13 @@ impl ChernoCamera {
             Vec3::ZERO,
         );
 
-        for y in 0..self.viewport_height {
-            for x in 0..self.viewport_width {
+        // This is called everytime the camera moves so it's important to make it fast
+        self.ray_directions
+            .par_iter_mut()
+            .enumerate()
+            .for_each(|(i, ray_dir)| {
+                let x = i % self.viewport_width as usize + 1;
+                let y = i / self.viewport_width as usize + 1;
                 let coord = Vec2::new(
                     x as f32 / self.viewport_width as f32,
                     y as f32 / self.viewport_height as f32,
@@ -81,11 +89,11 @@ impl ChernoCamera {
                 coord.y = -coord.y;
 
                 let target = self.inverse_projection * coord.extend(1.0).extend(1.0);
+                // world space
                 let ray_direction =
-                    (self.inverse_view * (target.xyz() / target.w).normalize().extend(0.0)).xyz(); // world space
-                self.ray_directions[(x + y * self.viewport_width) as usize] = ray_direction;
-            }
-        }
+                    (self.inverse_view * (target.xyz() / target.w).normalize().extend(0.0)).xyz();
+                *ray_dir = ray_direction;
+            });
     }
 }
 

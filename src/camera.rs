@@ -1,7 +1,5 @@
 use bevy::{input::mouse::MouseMotion, math::Vec4Swizzles, prelude::*, window::CursorGrabMode};
-use rayon::prelude::{
-    IndexedParallelIterator, IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator,
-};
+use rayon::prelude::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
 use crate::renderer::Renderer;
 

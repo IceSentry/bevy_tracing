@@ -1,8 +1,8 @@
 use std::ops::RangeInclusive;
 
 use crate::{
-    camera::ChernoCamera, renderer::Renderer, scene::Scene, Bounces, RenderDt, ViewportEguiTexture,
-    ViewportSize,
+    camera::ChernoCamera, renderer::Renderer, scene::Scene, Bounces, Frametimes,
+    ViewportEguiTexture, ViewportSize,
 };
 
 use bevy::prelude::*;
@@ -38,7 +38,7 @@ pub fn draw_dock_area(
     mut scene: ResMut<Scene>,
     viewport_egui_texture: Res<ViewportEguiTexture>,
     mut viewport_size: ResMut<ViewportSize>,
-    render_dt: Res<RenderDt>,
+    render_dt: Res<Frametimes>,
     mut bounces: ResMut<Bounces>,
     mut camera: ResMut<ChernoCamera>,
     mut renderer: ResMut<Renderer>,
@@ -47,7 +47,7 @@ pub fn draw_dock_area(
         viewport_texture: viewport_egui_texture.0,
         viewport_size: &mut viewport_size.0,
         dt: time.delta_seconds(),
-        render_dt: render_dt.0,
+        frametimes: &render_dt,
         scene: &mut scene,
         camera: &mut camera,
         bounces: &mut bounces.0,
@@ -70,7 +70,7 @@ pub struct TabViewer<'a> {
     pub viewport_texture: TextureId,
     pub viewport_size: &'a mut Vec2,
     pub dt: f32,
-    pub render_dt: f32,
+    pub frametimes: &'a Frametimes,
     pub scene: &'a mut Scene,
     pub bounces: &'a mut u8,
     pub camera: &'a mut ChernoCamera,
@@ -176,7 +176,14 @@ impl<'a> egui_dock::TabViewer for TabViewer<'a> {
                     fmt_usize_separator((self.viewport_size.x * self.viewport_size.y) as usize)
                 ));
                 ui.label(format!("dt: {:.2}ms", self.dt * 1000.0));
-                ui.label(format!("Render dt: {:.2}ms", self.render_dt * 1000.0));
+                ui.label(format!(
+                    "Render dt: {:.2}ms",
+                    self.frametimes.render * 1000.0
+                ));
+                ui.label(format!(
+                    "Image copy dt: {:.2}ms",
+                    self.frametimes.image_copy * 1000.0
+                ));
                 ui.label(format!("Samples: {}", self.samples));
 
                 ui.horizontal(|ui| {

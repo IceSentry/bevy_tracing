@@ -27,7 +27,10 @@ pub struct ViewportEguiTexture(pub TextureId);
 #[derive(Resource)]
 pub struct ViewportSize(pub Vec2);
 #[derive(Debug, Default, Resource)]
-pub struct RenderDt(pub f32);
+pub struct Frametimes {
+    render: f32,
+    image_copy: f32,
+}
 #[derive(Resource)]
 pub struct Bounces(pub u8);
 #[derive(Resource)]
@@ -44,7 +47,7 @@ fn main() {
             ..default()
         }))
         .add_plugin(EguiPlugin)
-        .init_resource::<RenderDt>()
+        .init_resource::<Frametimes>()
         .insert_resource(Bounces(5))
         .insert_resource(ChernoCamera::new(45.0, 0.1, 100.0))
         .insert_resource(Scene {
@@ -184,7 +187,7 @@ fn render(
     viewport_image: Res<ViewportImage>,
     mut images: ResMut<Assets<Image>>,
     mut renderer: ResMut<Renderer>,
-    mut render_dt: ResMut<RenderDt>,
+    mut frametimes: ResMut<Frametimes>,
     camera: Res<ChernoCamera>,
     scene: Res<Scene>,
     bounces: Res<Bounces>,
@@ -196,8 +199,9 @@ fn render(
         renderer.render(&camera, &scene, bounces.0);
     }
 
-    let elapsed = (Instant::now() - start).as_secs_f32();
-    render_dt.0 = elapsed;
+    frametimes.render = start.elapsed().as_secs_f32();
+
+    let start = Instant::now();
 
     let image = images.get_mut(&viewport_image.0).unwrap();
     {
@@ -210,4 +214,5 @@ fn render(
             .cloned()
             .collect::<Vec<u8>>();
     }
+    frametimes.image_copy = start.elapsed().as_secs_f32();
 }

@@ -67,6 +67,7 @@ impl ChernoCamera {
     }
 
     fn recalculate_ray_directions(&mut self) {
+        let _span = info_span!("recalculate ray directions").entered();
         self.ray_directions.resize(
             (self.viewport_width * self.viewport_height) as usize,
             Vec3::ZERO,
@@ -88,9 +89,8 @@ impl ChernoCamera {
 
                 let target = self.inverse_projection * coord.extend(1.0).extend(1.0);
                 // world space
-                let ray_direction =
+                *ray_dir =
                     (self.inverse_view * (target.xyz() / target.w).normalize().extend(0.0)).xyz();
-                *ray_dir = ray_direction;
             });
     }
 }

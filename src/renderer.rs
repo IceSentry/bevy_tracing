@@ -23,7 +23,7 @@ struct HitPayload {
 
 #[derive(Debug, Resource)]
 pub struct Renderer {
-    pub image_data: Vec<u32>,
+    pub image_data: Vec<[u8; 4]>,
     pub accumulation_data: Vec<Vec4>,
     pub width: usize,
     pub height: usize,
@@ -34,7 +34,7 @@ pub struct Renderer {
 impl Renderer {
     pub fn new(width: usize, height: usize) -> Self {
         Self {
-            image_data: vec![0; width * height],
+            image_data: vec![[0, 0, 0, 0]; width * height],
             accumulation_data: vec![Vec4::ZERO; width * height],
             width,
             height,
@@ -47,8 +47,7 @@ impl Renderer {
         self.width = width;
         self.height = height;
 
-        self.image_data.resize(width * height, 0);
-
+        self.image_data.resize(width * height, [0, 0, 0, 0]);
         self.accumulation_data.resize(width * height, Vec4::ZERO);
 
         self.reset_frame_index();
@@ -71,7 +70,7 @@ impl Renderer {
                 accumulated_color /= self.samples as f32;
 
                 let color = accumulated_color.clamp(Vec4::ZERO, Vec4::ONE);
-                *pixel = color.as_rgba_u32();
+                *pixel = color.as_u8_array();
             });
 
         if self.accumulate {

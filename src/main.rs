@@ -201,14 +201,10 @@ fn render(
     frametimes.render = start.elapsed().as_secs_f32();
 
     let start = Instant::now();
+    let image = images.get_mut(&viewport_image.0).unwrap();
     {
         let _image_span = info_span!("update image").entered();
-        let image = images.get_mut(&viewport_image.0).unwrap();
-        image.data = to_bytes(&renderer.image_data);
+        image.data = renderer.image_data.iter().flat_map(|p| *p).collect();
     }
     frametimes.image_copy = start.elapsed().as_secs_f32();
-}
-
-pub fn to_bytes(input: &[u32]) -> Vec<u8> {
-    input.iter().flat_map(|val| val.to_ne_bytes()).collect()
 }

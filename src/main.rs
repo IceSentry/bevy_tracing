@@ -192,27 +192,23 @@ fn render(
     scene: Res<Scene>,
     bounces: Res<Bounces>,
 ) {
+    // TODO use diagnostic system
     let start = Instant::now();
-
     {
         let _render_span = info_span!("render").entered();
         renderer.render(&camera, &scene, bounces.0);
     }
-
     frametimes.render = start.elapsed().as_secs_f32();
 
     let start = Instant::now();
-
-    let image = images.get_mut(&viewport_image.0).unwrap();
     {
         let _image_span = info_span!("update image").entered();
-        // There's probably a more efficient way to do this using unsafe code, but it's good enough
-        image.data = renderer
-            .image_data
-            .iter()
-            .flatten()
-            .cloned()
-            .collect::<Vec<u8>>();
+        let image = images.get_mut(&viewport_image.0).unwrap();
+        image.data = to_bytes(&renderer.image_data);
     }
     frametimes.image_copy = start.elapsed().as_secs_f32();
+}
+
+pub fn to_bytes(input: &[u32]) -> Vec<u8> {
+    input.iter().flat_map(|val| val.to_ne_bytes()).collect()
 }

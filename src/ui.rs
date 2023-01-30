@@ -1,8 +1,8 @@
 use std::ops::RangeInclusive;
 
 use crate::{
-    camera::ChernoCamera, renderer::Renderer, scene::Scene, Bounces, Frametimes,
-    ViewportEguiTexture, ViewportSize,
+    camera::ChernoCamera, renderer::Renderer, scene::Scene, Frametimes, ViewportEguiTexture,
+    ViewportSize,
 };
 
 use bevy::prelude::*;
@@ -23,10 +23,18 @@ pub enum Tabs {
 pub struct DockTree(pub Tree<Tabs>);
 
 pub fn setup_ui(mut commands: Commands) {
-    // Setup dock tree
+    // Setup dock tree to look like this:
+    //  __________________________
+    // |               | Scene    |
+    // |               |          |
+    // |   Viewport    |__________|
+    // |               | Settings |
+    // |_______________|__________|
+
     let mut tree = Tree::new(vec![Tabs::Viewport]);
     let [_viewport, scene] = tree.split_right(NodeIndex::root(), 0.75, vec![Tabs::Scene]);
     tree.split_below(scene, 0.85, vec![Tabs::Settings]);
+
     commands.insert_resource(DockTree(tree));
 }
 
@@ -39,31 +47,23 @@ pub fn draw_dock_area(
     viewport_egui_texture: Res<ViewportEguiTexture>,
     mut viewport_size: ResMut<ViewportSize>,
     render_dt: Res<Frametimes>,
-    mut bounces: ResMut<Bounces>,
     mut camera: ResMut<ChernoCamera>,
     mut renderer: ResMut<Renderer>,
 ) {
     let mut tab_viewer = TabViewer {
         viewport_texture: viewport_egui_texture.0,
         viewport_size: &mut viewport_size.0,
+        // TODO have diagnostic struct
         dt: time.delta_seconds(),
         frametimes: &render_dt,
         scene: &mut scene,
         camera: &mut camera,
-        bounces: &mut bounces.0,
-        reset: false,
-        samples: renderer.samples,
-        accumulate: renderer.accumulate,
+        renderer: &mut renderer,
     };
 
     DockArea::new(&mut tree)
         .style(Style::from_egui(egui_context.ctx_mut().style().as_ref()))
         .show(egui_context.ctx_mut(), &mut tab_viewer);
-
-    if tab_viewer.reset {
-        renderer.reset_frame_index();
-    }
-    renderer.accumulate = tab_viewer.accumulate;
 }
 
 pub struct TabViewer<'a> {
@@ -72,17 +72,15 @@ pub struct TabViewer<'a> {
     pub dt: f32,
     pub frametimes: &'a Frametimes,
     pub scene: &'a mut Scene,
-    pub bounces: &'a mut u8,
     pub camera: &'a mut ChernoCamera,
-    pub reset: bool,
-    pub samples: usize,
-    pub accumulate: bool,
+    pub renderer: &'a mut Renderer,
 }
 
 impl<'a> egui_dock::TabViewer for TabViewer<'a> {
     type Tab = Tabs;
 
     fn ui(&mut self, ui: &mut egui::Ui, tab: &mut Self::Tab) {
+        let mut reset = false;
         match tab {
             Tabs::Viewport => {
                 *self.viewport_size = Vec2::from_array(ui.available_size().into());
@@ -94,7 +92,7 @@ impl<'a> egui_dock::TabViewer for TabViewer<'a> {
                     .num_columns(2)
                     .show(ui, |ui| {
                         ui.label("Position");
-                        self.reset |= drag_vec3(ui, &mut self.camera.position, 0.1);
+                        reset |= drag_vec3(ui, &mut self.camera.position, 0.1);
                         ui.end_row();
                     });
                 ui.separator();
@@ -102,7 +100,7 @@ impl<'a> egui_dock::TabViewer for TabViewer<'a> {
                 ui.heading("Sky");
                 egui::Grid::new("sky_grid").num_columns(2).show(ui, |ui| {
                     ui.label("Color");
-                    self.reset |= drag_vec3_color(ui, &mut self.scene.sky_color);
+                    reset |= drag_vec3_color(ui, &mut self.scene.sky_color);
                     ui.end_row();
                 });
                 ui.separator();
@@ -113,11 +111,11 @@ impl<'a> egui_dock::TabViewer for TabViewer<'a> {
                         .num_columns(2)
                         .show(ui, |ui| {
                             ui.label("Direction");
-                            self.reset |= drag_vec3(ui, &mut light.direction, 0.025);
+                            reset |= drag_vec3(ui, &mut light.direction, 0.025);
                             ui.end_row();
 
                             ui.label("Intensity");
-                            self.reset |= drag_f32_clamp(ui, &mut light.intensity, 0.025, 0..=1);
+                            reset |= drag_f32_clamp(ui, &mut light.intensity, 0.025, 0..=1);
                             ui.end_row();
                         });
                     ui.separator();
@@ -129,15 +127,15 @@ impl<'a> egui_dock::TabViewer for TabViewer<'a> {
                         .num_columns(2)
                         .show(ui, |ui| {
                             ui.label("Albedo");
-                            self.reset |= drag_vec3_color(ui, &mut material.albedo);
+                            reset |= drag_vec3_color(ui, &mut material.albedo);
                             ui.end_row();
 
                             ui.label("Roughness");
-                            self.reset |= drag_f32_clamp(ui, &mut material.roughness, 0.025, 0..=1);
+                            reset |= drag_f32_clamp(ui, &mut material.roughness, 0.025, 0..=1);
                             ui.end_row();
 
                             ui.label("Metallic");
-                            self.reset |= drag_f32_clamp(ui, &mut material.metallic, 0.025, 0..=1);
+                            reset |= drag_f32_clamp(ui, &mut material.metallic, 0.025, 0..=1);
                             ui.end_row();
                         });
                     ui.separator();
@@ -149,15 +147,15 @@ impl<'a> egui_dock::TabViewer for TabViewer<'a> {
                         .num_columns(2)
                         .show(ui, |ui| {
                             ui.label("Position");
-                            self.reset |= drag_vec3(ui, &mut sphere.position, 0.1);
+                            reset |= drag_vec3(ui, &mut sphere.position, 0.1);
                             ui.end_row();
 
                             ui.label("Radius");
-                            self.reset |= drag_f32(ui, &mut sphere.radius, 0.025);
+                            reset |= drag_f32(ui, &mut sphere.radius, 0.025);
                             ui.end_row();
 
                             ui.label("Material id");
-                            self.reset |= drag_usize(
+                            reset |= drag_usize(
                                 ui,
                                 &mut sphere.material_id,
                                 1.0,
@@ -184,17 +182,20 @@ impl<'a> egui_dock::TabViewer for TabViewer<'a> {
                     "Image copy dt: {:.2}ms",
                     self.frametimes.image_copy * 1000.0
                 ));
-                ui.label(format!("Samples: {}", self.samples));
+                ui.label(format!("Samples: {}", self.renderer.samples));
 
                 ui.horizontal(|ui| {
                     ui.label("Bounces");
-                    self.reset |= drag_u8(ui, self.bounces, 0.25);
+                    reset |= drag_u8(ui, &mut self.renderer.bounces, 0.25);
                 });
 
-                ui.checkbox(&mut self.accumulate, "Accumulate");
-                self.reset |= ui.button("Reset").clicked();
+                ui.checkbox(&mut self.renderer.accumulate, "Accumulate");
+                reset |= ui.button("Reset").clicked();
             }
         };
+        if reset {
+            self.renderer.reset_frame_index();
+        }
     }
 
     fn title(&mut self, tab: &mut Self::Tab) -> egui::WidgetText {

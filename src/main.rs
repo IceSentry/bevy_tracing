@@ -32,8 +32,6 @@ pub struct Frametimes {
     image_copy: f32,
 }
 #[derive(Resource)]
-pub struct Bounces(pub u8);
-#[derive(Resource)]
 pub struct SkyColor(pub Vec4);
 
 fn main() {
@@ -48,7 +46,6 @@ fn main() {
         }))
         .add_plugin(EguiPlugin)
         .init_resource::<Frametimes>()
-        .insert_resource(Bounces(5))
         .insert_resource(ChernoCamera::new(45.0, 0.1, 100.0))
         .insert_resource(Scene {
             sky_color: vec3(0.6, 0.7, 0.9),
@@ -190,13 +187,12 @@ fn render(
     mut frametimes: ResMut<Frametimes>,
     camera: Res<ChernoCamera>,
     scene: Res<Scene>,
-    bounces: Res<Bounces>,
 ) {
     // TODO use diagnostic system
     let start = Instant::now();
     {
         let _render_span = info_span!("render").entered();
-        renderer.render(&camera, &scene, bounces.0);
+        renderer.render(&camera, &scene);
     }
     frametimes.render = start.elapsed().as_secs_f32();
 

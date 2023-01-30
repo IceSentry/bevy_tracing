@@ -29,6 +29,7 @@ pub struct Renderer {
     pub height: usize,
     pub samples: usize,
     pub accumulate: bool,
+    pub bounces: u8,
 }
 
 impl Renderer {
@@ -40,6 +41,7 @@ impl Renderer {
             height,
             samples: 1,
             accumulate: true,
+            bounces: 5,
         }
     }
 
@@ -53,7 +55,7 @@ impl Renderer {
         self.reset_frame_index();
     }
 
-    pub fn render(&mut self, camera: &ChernoCamera, scene: &Scene, bounces: u8) {
+    pub fn render(&mut self, camera: &ChernoCamera, scene: &Scene) {
         if self.samples == 1 {
             self.accumulation_data.fill(Vec4::ZERO);
         }
@@ -63,7 +65,7 @@ impl Renderer {
             .zip(&mut self.accumulation_data)
             .enumerate()
             .for_each(|(pixel_index, (pixel, accumulated_pixel))| {
-                let color = per_pixel(scene, camera, pixel_index, bounces);
+                let color = per_pixel(scene, camera, pixel_index, self.bounces);
 
                 *accumulated_pixel += color;
                 let mut accumulated_color = *accumulated_pixel;

@@ -6,6 +6,7 @@ mod ui;
 use std::time::Instant;
 
 use bevy::{
+    log::LogPlugin,
     math::vec3,
     prelude::*,
     render::render_resource::{
@@ -14,6 +15,7 @@ use bevy::{
     window::PresentMode,
 };
 use bevy_egui::{egui::TextureId, EguiContext, EguiPlugin};
+use bevy_puffin::PuffinTracePlugin;
 use camera::{update_camera, ChernoCamera};
 
 use renderer::Renderer;
@@ -36,17 +38,24 @@ pub struct SkyColor(pub Vec4);
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            window: WindowDescriptor {
-                title: "Cherno Tracing".to_string(),
-                present_mode: PresentMode::AutoNoVsync,
-                ..default()
-            },
-            ..default()
-        }))
+        .add_plugins(
+            DefaultPlugins
+                .set(WindowPlugin {
+                    window: WindowDescriptor {
+                        title: "Cherno Tracing".to_string(),
+                        present_mode: PresentMode::AutoNoVsync,
+                        ..default()
+                    },
+                    ..default()
+                })
+                .disable::<LogPlugin>(),
+        )
+        .add_plugin(PuffinTracePlugin::new())
+        .insert_resource(ShowProfiler(true))
         .add_plugin(EguiPlugin)
         .init_resource::<Frametimes>()
         .insert_resource(ChernoCamera::new(45.0, 0.1, 100.0))
+        // TODO use bevy scene feature
         .insert_resource(Scene {
             sky_color: vec3(0.6, 0.7, 0.9),
             lights: vec![Light {
@@ -114,7 +123,19 @@ fn main() {
         .add_system(resize_image.after(draw_dock_area))
         .add_system(render.after(resize_image))
         .add_system(update_camera)
+        .add_system(show_profiler)
         .run();
+}
+
+#[derive(Resource)]
+struct ShowProfiler(bool);
+
+fn show_profiler(mut ctx: ResMut<EguiContext>, mut show: ResMut<ShowProfiler>) {
+    // TODO toggle
+    let ctx = ctx.ctx_mut();
+    if show.0 {
+        show.0 = puffin_egui::profiler_window(ctx);
+    }
 }
 
 fn setup_renderer(
@@ -199,7 +220,7 @@ fn render(
     let start = Instant::now();
     let image = images.get_mut(&viewport_image.0).unwrap();
     {
-        let _image_span = info_span!("update image").entered();
+        let _render_span = info_span!("image copy").entered();
         image.data = renderer.image_data.iter().flat_map(|p| *p).collect();
     }
     frametimes.image_copy = start.elapsed().as_secs_f32();

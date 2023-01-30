@@ -50,6 +50,7 @@ pub fn draw_dock_area(
     mut camera: ResMut<ChernoCamera>,
     mut renderer: ResMut<Renderer>,
 ) {
+    puffin::profile_function!();
     let mut tab_viewer = TabViewer {
         viewport_texture: viewport_egui_texture.0,
         viewport_size: &mut viewport_size.0,

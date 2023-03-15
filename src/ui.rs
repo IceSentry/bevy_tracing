@@ -8,7 +8,7 @@ use crate::{
 use bevy::prelude::*;
 use bevy_egui::{
     egui::{self, TextureId},
-    EguiContext,
+    EguiContexts,
 };
 use egui_dock::{DockArea, NodeIndex, Style, Tree};
 
@@ -40,7 +40,7 @@ pub fn setup_ui(mut commands: Commands) {
 
 #[allow(clippy::too_many_arguments)]
 pub fn draw_dock_area(
-    mut egui_context: ResMut<EguiContext>,
+    mut egui_context: EguiContexts,
     mut tree: ResMut<DockTree>,
     time: Res<Time>,
     mut scene: ResMut<Scene>,

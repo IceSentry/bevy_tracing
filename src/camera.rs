@@ -1,4 +1,9 @@
-use bevy::{input::mouse::MouseMotion, math::Vec4Swizzles, prelude::*, window::CursorGrabMode};
+use bevy::{
+    input::mouse::MouseMotion,
+    math::Vec4Swizzles,
+    prelude::*,
+    window::{CursorGrabMode, PrimaryWindow},
+};
 use rayon::prelude::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
 use crate::renderer::Renderer;
@@ -101,7 +106,7 @@ pub fn update_camera(
     mouse_button_input: Res<Input<MouseButton>>,
     keyboard_input: Res<Input<KeyCode>>,
     time: Res<Time>,
-    mut windows: ResMut<Windows>,
+    mut primary_window: Query<&mut Window, With<PrimaryWindow>>,
     mut renderer: ResMut<Renderer>,
 ) {
     let mouse_motion_delta = mouse_motion_events
@@ -109,14 +114,14 @@ pub fn update_camera(
         .map(|mouse_motion| mouse_motion.delta)
         .last();
 
-    let window = windows.primary_mut();
+    let mut window = primary_window.single_mut();
     if !mouse_button_input.pressed(MouseButton::Right) {
-        window.set_cursor_visibility(true);
-        window.set_cursor_grab_mode(CursorGrabMode::None);
+        window.cursor.visible = true;
+        window.cursor.grab_mode = CursorGrabMode::None;
         return;
     }
-    window.set_cursor_visibility(false);
-    window.set_cursor_grab_mode(CursorGrabMode::Confined);
+    window.cursor.visible = false;
+    window.cursor.grab_mode = CursorGrabMode::Confined;
 
     let mut moved = false;
 

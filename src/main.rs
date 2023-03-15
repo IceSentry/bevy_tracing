@@ -13,7 +13,7 @@ use bevy::{
     },
     window::PresentMode,
 };
-use bevy_egui::{egui::TextureId, EguiContext, EguiPlugin};
+use bevy_egui::{egui::TextureId, EguiContexts, EguiPlugin};
 use camera::{update_camera, ChernoCamera};
 
 use renderer::Renderer;
@@ -36,16 +36,14 @@ pub struct SkyColor(pub Vec4);
 
 fn main() {
     App::new()
-        .add_plugins(
-            DefaultPlugins.set(WindowPlugin {
-                window: WindowDescriptor {
-                    title: "Cherno Tracing".to_string(),
-                    present_mode: PresentMode::AutoNoVsync,
-                    ..default()
-                },
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                title: "Cherno Tracing".to_string(),
+                present_mode: PresentMode::AutoNoVsync,
                 ..default()
-            }), // .disable::<LogPlugin>(),
-        )
+            }),
+            ..default()
+        }))
         // .add_plugin(PuffinTracePlugin::new())
         // .insert_resource(ShowProfiler(true))
         .add_plugin(EguiPlugin)
@@ -136,7 +134,7 @@ fn main() {
 
 fn setup_renderer(
     mut commands: Commands,
-    mut egui_ctx: ResMut<EguiContext>,
+    mut egui_ctx: EguiContexts,
     mut images: ResMut<Assets<Image>>,
 ) {
     let size = Extent3d {
@@ -157,6 +155,7 @@ fn setup_renderer(
             usage: TextureUsages::TEXTURE_BINDING
                 | TextureUsages::COPY_DST
                 | TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
         },
         ..default()
     };

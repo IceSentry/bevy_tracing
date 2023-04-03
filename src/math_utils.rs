@@ -1,7 +1,7 @@
-use bevy::prelude::Vec3;
+use bevy::math::Vec3A;
 
 // For the incident vector I and surface orientation N, returns the reflection direction
-pub fn reflect(i: Vec3, n: Vec3) -> Vec3 {
+pub fn reflect(i: Vec3A, n: Vec3A) -> Vec3A {
     i - 2.0 * n.dot(i) * n
 }
 

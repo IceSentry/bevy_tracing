@@ -1,6 +1,6 @@
 use bevy::{
     input::mouse::MouseMotion,
-    math::Vec4Swizzles,
+    math::{Vec3A, Vec4Swizzles},
     prelude::*,
     window::{CursorGrabMode, PrimaryWindow},
 };
@@ -18,7 +18,7 @@ pub struct ChernoCamera {
     pub position: Vec3,
     pub forward_direction: Vec3,
 
-    pub ray_directions: Vec<Vec3>,
+    pub ray_directions: Vec<Vec3A>,
 
     vertical_fov: f32,
     near_clip: f32,
@@ -36,7 +36,7 @@ impl ChernoCamera {
             far_clip,
             forward_direction: Vec3::NEG_Z,
             position: Vec3::new(0.0, 0.0, 6.0),
-            ..Default::default()
+            ..default()
         }
     }
 
@@ -75,7 +75,7 @@ impl ChernoCamera {
         let _span = info_span!("recalculate ray directions").entered();
         self.ray_directions.resize(
             (self.viewport_width * self.viewport_height) as usize,
-            Vec3::ZERO,
+            Vec3A::ZERO,
         );
 
         // This is called everytime the camera moves so it's important to make it fast
@@ -94,8 +94,9 @@ impl ChernoCamera {
 
                 let target = self.inverse_projection * coord.extend(1.0).extend(1.0);
                 // world space
-                *ray_dir =
-                    (self.inverse_view * (target.xyz() / target.w).normalize().extend(0.0)).xyz();
+                *ray_dir = (self.inverse_view * (target.xyz() / target.w).normalize().extend(0.0))
+                    .xyz()
+                    .into();
             });
     }
 }

@@ -5,7 +5,7 @@ use crate::{
     ViewportSize,
 };
 
-use bevy::prelude::*;
+use bevy::{math::Vec3A, prelude::*};
 use bevy_egui::{
     egui::{self, TextureId},
     EguiContexts,
@@ -221,6 +221,23 @@ impl<'a> egui_dock::TabViewer for TabViewer<'a> {
 }
 
 fn drag_vec3(ui: &mut egui::Ui, value: &mut Vec3, speed: f32) -> bool {
+    let mut changed = false;
+    ui.columns(3, |ui| {
+        changed |= ui[0]
+            .add_sized([0.0, 0.0], egui::DragValue::new(&mut value.x).speed(speed))
+            .changed();
+        changed |= ui[1]
+            .add_sized([0.0, 0.0], egui::DragValue::new(&mut value.y).speed(speed))
+            .changed();
+        changed |= ui[2]
+            .add_sized([0.0, 0.0], egui::DragValue::new(&mut value.z).speed(speed))
+            .changed();
+    });
+    changed
+}
+
+#[allow(unused)]
+fn drag_vec3a(ui: &mut egui::Ui, value: &mut Vec3A, speed: f32) -> bool {
     let mut changed = false;
     ui.columns(3, |ui| {
         changed |= ui[0]

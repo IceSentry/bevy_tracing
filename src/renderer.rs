@@ -1,4 +1,5 @@
 use bevy::{
+    math::Vec3A,
     prelude::*,
     render::{mesh::Indices, primitives::Aabb},
 };
@@ -11,12 +12,11 @@ use crate::{
     scene::{Scene, Sphere},
 };
 
-// TODO use Vec3A
 #[derive(Debug, Clone, Copy)]
 struct Ray {
-    origin: Vec3,
-    direction: Vec3,
-    inv_direction: Vec3,
+    origin: Vec3A,
+    direction: Vec3A,
+    inv_direction: Vec3A,
 }
 
 struct HitPayload {
@@ -114,7 +114,7 @@ fn sky_color(scene: &Scene, ray: &Ray) -> Vec3 {
 
 fn per_pixel(scene: &Scene, camera: &ChernoCamera, pixel_index: usize, bounces: u8) -> Vec4 {
     let mut ray = Ray {
-        origin: camera.position,
+        origin: Vec3A::from(camera.position),
         direction: camera.ray_directions[pixel_index],
         inv_direction: 1.0 / camera.ray_directions[pixel_index],
     };
@@ -144,7 +144,7 @@ fn per_pixel(scene: &Scene, camera: &ChernoCamera, pixel_index: usize, bounces: 
                 color += hit_color * multiplier;
                 multiplier *= 0.5;
 
-                ray.origin = payload.world_position + payload.world_normal * 0.0001;
+                ray.origin = (payload.world_position + payload.world_normal * 0.0001).into();
                 let rand_dir = Vec3::new(
                     rng.generate::<f32>(),
                     rng.generate::<f32>(),
@@ -152,7 +152,7 @@ fn per_pixel(scene: &Scene, camera: &ChernoCamera, pixel_index: usize, bounces: 
                 ) - 0.5; // -0.5..0.5
                 ray.direction = reflect(
                     ray.direction,
-                    payload.world_normal + material.roughness * rand_dir,
+                    (payload.world_normal + material.roughness * rand_dir).into(),
                 );
             }
         }
@@ -177,7 +177,7 @@ fn trace_ray(ray: &Ray, scene: &Scene) -> Option<HitPayload> {
         }
     }
 
-    let mut normal = Vec3::ZERO;
+    let mut normal = Vec3A::ZERO;
     let mut closest_mesh: Option<usize> = None;
     for (i, mesh) in scene.meshes.iter().enumerate() {
         if !aabb_intersect(ray, mesh.aabb) {
@@ -230,8 +230,8 @@ fn trace_ray(ray: &Ray, scene: &Scene) -> Option<HitPayload> {
     if let Some(sphere_index) = closest_sphere {
         if sphere_hit_distance < triangle_hit_distance {
             let sphere = scene.spheres[sphere_index];
-            let origin = ray.origin - sphere.position;
-            let hit_position = origin + ray.direction * sphere_hit_distance;
+            let origin = Vec3::from(ray.origin) - sphere.position;
+            let hit_position = origin + Vec3::from(ray.direction) * sphere_hit_distance;
             return Some(HitPayload {
                 hit_distance: sphere_hit_distance,
                 material_id: sphere.material_id,
@@ -244,14 +244,14 @@ fn trace_ray(ray: &Ray, scene: &Scene) -> Option<HitPayload> {
     if let Some(mesh_index) = closest_mesh {
         if triangle_hit_distance < sphere_hit_distance {
             let mesh = &scene.meshes[mesh_index];
-            let origin = ray.origin - mesh.transform.translation;
-            let hit_position = origin + ray.direction * triangle_hit_distance;
+            let translation = mesh.transform.translation;
+            let origin = Vec3::from(ray.origin) - translation;
+            let hit_position = origin + Vec3::from(ray.direction) * triangle_hit_distance;
             return Some(HitPayload {
                 hit_distance: triangle_hit_distance,
                 material_id: mesh.material_id,
-                world_position: hit_position + mesh.transform.translation,
-                // TODO this isn't the actual world_normal
-                world_normal: normal,
+                world_position: hit_position + translation,
+                world_normal: normal.into(),
             });
         }
     }
@@ -260,7 +260,7 @@ fn trace_ray(ray: &Ray, scene: &Scene) -> Option<HitPayload> {
 }
 
 fn sphere_intersect(ray: &Ray, sphere: &Sphere) -> Option<f32> {
-    let origin = ray.origin - sphere.position;
+    let origin = ray.origin - Vec3A::from(sphere.position);
 
     let a = ray.direction.dot(ray.direction);
     let b = 2.0 * origin.dot(ray.direction);
@@ -281,13 +281,13 @@ fn sphere_intersect(ray: &Ray, sphere: &Sphere) -> Option<f32> {
 #[allow(non_snake_case)]
 fn triangle_intersect(
     ray: &Ray,
-    v0: Vec3,
-    v1: Vec3,
-    v2: Vec3,
-    n0: Vec3,
-    n1: Vec3,
-    n2: Vec3,
-) -> Option<(f32, Vec3)> {
+    v0: Vec3A,
+    v1: Vec3A,
+    v2: Vec3A,
+    n0: Vec3A,
+    n1: Vec3A,
+    n2: Vec3A,
+) -> Option<(f32, Vec3A)> {
     let v0v1 = v1 - v0;
     let v0v2 = v2 - v0;
     let p_vec = ray.direction.cross(v0v2);
@@ -326,8 +326,8 @@ fn aabb_intersect(ray: &Ray, aabb: Aabb) -> bool {
         let t1 = (Vec3::from(aabb.min())[i] - ray.origin[i]) * ray.inv_direction[i];
         let t2 = (Vec3::from(aabb.max())[i] - ray.origin[i]) * ray.inv_direction[i];
 
-        tmin = f32::min(f32::max(t1, tmin), f32::max(t2, tmin));
-        tmax = f32::max(f32::min(t1, tmax), f32::min(t2, tmax));
+        tmin = t1.max(tmin).min(t2.max(tmin));
+        tmax = t1.min(tmax).max(t2.min(tmax));
     }
 
     tmin < tmax

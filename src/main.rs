@@ -1,4 +1,5 @@
 mod camera;
+mod egui_utils;
 mod math_utils;
 mod renderer;
 mod scene;

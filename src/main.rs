@@ -199,11 +199,12 @@ fn resize_image(
     mut renderer: ResMut<Renderer>,
     mut camera: ResMut<CustomCamera>,
     viewport_scale: Res<ViewportScale>,
+    mut prev_scale: Local<f32>,
 ) {
     let image = images.get_mut(&viewport_image.0).unwrap();
     if image.size().x != viewport_size.0.x
         || image.size().y != viewport_size.0.y
-        || viewport_scale.is_changed()
+        || viewport_scale.0 != *prev_scale
     {
         let size = Extent3d {
             width: (viewport_size.0.x * viewport_scale.0) as u32,
@@ -216,6 +217,8 @@ fn resize_image(
         camera.resize(size.width, size.height);
         renderer.resize(size.width as usize, size.height as usize);
     }
+
+    *prev_scale = viewport_scale.0;
 }
 
 fn render(

@@ -1,4 +1,7 @@
-use bevy::prelude::*;
+use bevy::{
+    prelude::*,
+    render::{mesh::Indices, primitives::Aabb},
+};
 use nanorand::Rng;
 use rayon::prelude::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
@@ -8,10 +11,12 @@ use crate::{
     scene::{Scene, Sphere},
 };
 
+// TODO use Vec3A
 #[derive(Debug, Clone, Copy)]
 struct Ray {
     origin: Vec3,
     direction: Vec3,
+    inv_direction: Vec3,
 }
 
 struct HitPayload {
@@ -19,7 +24,7 @@ struct HitPayload {
     hit_distance: f32,
     world_position: Vec3,
     world_normal: Vec3,
-    object_index: usize,
+    material_id: usize,
 }
 
 #[derive(Debug, Resource)]
@@ -111,6 +116,7 @@ fn per_pixel(scene: &Scene, camera: &ChernoCamera, pixel_index: usize, bounces: 
     let mut ray = Ray {
         origin: camera.position,
         direction: camera.ray_directions[pixel_index],
+        inv_direction: 1.0 / camera.ray_directions[pixel_index],
     };
     let mut multiplier = 1.0;
     let mut color = Vec3::ZERO;
@@ -122,11 +128,9 @@ fn per_pixel(scene: &Scene, camera: &ChernoCamera, pixel_index: usize, bounces: 
                 break;
             }
             Some(payload) => {
-                let sphere = scene.spheres[payload.object_index];
-                let material = scene.materials[sphere.material_id];
-                let mut sphere_color = material.albedo;
+                let material = scene.materials[payload.material_id];
 
-                // TODO handle sun shading separately
+                let mut hit_color = material.albedo;
 
                 let mut light_intensity = 0.0;
                 for light in &scene.lights {
@@ -135,9 +139,9 @@ fn per_pixel(scene: &Scene, camera: &ChernoCamera, pixel_index: usize, bounces: 
                         payload.world_normal.dot(light_dir).max(0.0) * light.intensity;
                 }
 
-                sphere_color *= light_intensity;
+                hit_color *= light_intensity;
 
-                color += sphere_color * multiplier;
+                color += hit_color * multiplier;
                 multiplier *= 0.5;
 
                 ray.origin = payload.world_position + payload.world_normal * 0.0001;
@@ -156,35 +160,103 @@ fn per_pixel(scene: &Scene, camera: &ChernoCamera, pixel_index: usize, bounces: 
     color.extend(1.0)
 }
 
-fn closest_hit(scene: &Scene, ray: &Ray, hit_distance: f32, object_index: usize) -> HitPayload {
-    let sphere = scene.spheres[object_index];
-    let origin = ray.origin - sphere.position;
-    let hit_position = origin + ray.direction * hit_distance;
-    let world_normal = hit_position.normalize();
-
-    HitPayload {
-        hit_distance,
-        object_index,
-        world_position: hit_position + sphere.position,
-        world_normal,
-    }
-}
-
 fn trace_ray(ray: &Ray, scene: &Scene) -> Option<HitPayload> {
-    let mut closest_object: Option<usize> = None;
-    let mut hit_distance = f32::MAX;
+    let mut sphere_hit_distance = f32::MAX;
+    let mut triangle_hit_distance = f32::MAX;
+
+    let mut closest_sphere: Option<usize> = None;
     for (i, sphere) in scene.spheres.iter().enumerate() {
         match sphere_intersect(ray, sphere) {
             None => continue,
             Some(closest_t) => {
-                if closest_t > 0.0 && closest_t < hit_distance {
-                    hit_distance = closest_t;
-                    closest_object = Some(i);
+                if closest_t > 0.0 && closest_t < sphere_hit_distance {
+                    sphere_hit_distance = closest_t;
+                    closest_sphere = Some(i);
                 }
             }
         }
     }
-    closest_object.map(|object_index| closest_hit(scene, ray, hit_distance, object_index))
+
+    let mut normal = Vec3::ZERO;
+    let mut closest_mesh: Option<usize> = None;
+    for (i, mesh) in scene.meshes.iter().enumerate() {
+        if !aabb_intersect(ray, mesh.aabb) {
+            continue;
+        }
+
+        let Some(Some(positions)) = mesh
+            .mesh
+            .attribute(Mesh::ATTRIBUTE_POSITION)
+            .map(|x| x.as_float3())
+        else {
+            panic!("Vertex positions attribute should exist and be float3");
+        };
+        let Some(Some(normals)) = mesh
+            .mesh
+            .attribute(Mesh::ATTRIBUTE_NORMAL)
+            .map(|x| x.as_float3())
+        else {
+            panic!("Vertex normals attribute should exist and be float3");
+        };
+
+        let Some(Indices::U32(indices)) = mesh.mesh.indices() else {
+            panic!("Only U32 indices are supported")
+        };
+
+        for indices in indices.chunks(3) {
+            let [i0, i1, i2] = indices else { unreachable!() };
+
+            match triangle_intersect(
+                ray,
+                positions[*i0 as usize].into(),
+                positions[*i1 as usize].into(),
+                positions[*i2 as usize].into(),
+                normals[*i0 as usize].into(),
+                normals[*i1 as usize].into(),
+                normals[*i2 as usize].into(),
+            ) {
+                None => continue,
+                Some((closest_t, hit_normal)) => {
+                    if closest_t > 0.0 && closest_t < triangle_hit_distance {
+                        triangle_hit_distance = closest_t;
+                        normal = hit_normal;
+                        closest_mesh = Some(i);
+                    }
+                }
+            }
+        }
+    }
+
+    if let Some(sphere_index) = closest_sphere {
+        if sphere_hit_distance < triangle_hit_distance {
+            let sphere = scene.spheres[sphere_index];
+            let origin = ray.origin - sphere.position;
+            let hit_position = origin + ray.direction * sphere_hit_distance;
+            return Some(HitPayload {
+                hit_distance: sphere_hit_distance,
+                material_id: sphere.material_id,
+                world_position: hit_position + sphere.position,
+                world_normal: hit_position.normalize(),
+            });
+        }
+    }
+
+    if let Some(mesh_index) = closest_mesh {
+        if triangle_hit_distance < sphere_hit_distance {
+            let mesh = &scene.meshes[mesh_index];
+            let origin = ray.origin - mesh.transform.translation;
+            let hit_position = origin + ray.direction * triangle_hit_distance;
+            return Some(HitPayload {
+                hit_distance: triangle_hit_distance,
+                material_id: mesh.material_id,
+                world_position: hit_position + mesh.transform.translation,
+                // TODO this isn't the actual world_normal
+                world_normal: normal,
+            });
+        }
+    }
+
+    None
 }
 
 fn sphere_intersect(ray: &Ray, sphere: &Sphere) -> Option<f32> {
@@ -202,6 +274,63 @@ fn sphere_intersect(ray: &Ray, sphere: &Sphere) -> Option<f32> {
     let closest_t = (-b - discriminant.sqrt()) / (2.0 * a);
     // let _t0 = (-b + discriminant.sqrt()) / (2.0 * a);
     Some(closest_t)
+}
+
+// Scratch a pixel: https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/moller-trumbore-ray-triangle-intersection.html
+// Sebastian Lague: https://youtu.be/Qz0KTGYJtUk?t=1419
+#[allow(non_snake_case)]
+fn triangle_intersect(
+    ray: &Ray,
+    v0: Vec3,
+    v1: Vec3,
+    v2: Vec3,
+    n0: Vec3,
+    n1: Vec3,
+    n2: Vec3,
+) -> Option<(f32, Vec3)> {
+    let v0v1 = v1 - v0;
+    let v0v2 = v2 - v0;
+    let p_vec = ray.direction.cross(v0v2);
+    let det = v0v1.dot(p_vec);
+
+    if det < f32::EPSILON {
+        return None;
+    }
+
+    let inv_det = 1.0 / det;
+
+    let t_vec = ray.origin - v0;
+    let u = t_vec.dot(p_vec) * inv_det;
+    if !(0.0..=1.0).contains(&u) {
+        return None;
+    }
+
+    let q_vec = t_vec.cross(v0v1);
+    let v = ray.direction.dot(q_vec) * inv_det;
+    if v < 0.0 || u + v > 1.0 {
+        return None;
+    }
+
+    let t = v0v2.dot(q_vec) * inv_det;
+    let w = 1.0 - u - v;
+    let N = (n0 * w + n1 * u + n2 * v).normalize();
+    Some((t, N))
+}
+
+// https://tavianator.com/2022/ray_box_boundary.html
+fn aabb_intersect(ray: &Ray, aabb: Aabb) -> bool {
+    let mut tmin: f32 = 0.0;
+    let mut tmax: f32 = f32::INFINITY;
+
+    for i in 0..3 {
+        let t1 = (Vec3::from(aabb.min())[i] - ray.origin[i]) * ray.inv_direction[i];
+        let t2 = (Vec3::from(aabb.max())[i] - ray.origin[i]) * ray.inv_direction[i];
+
+        tmin = f32::min(f32::max(t1, tmin), f32::max(t2, tmin));
+        tmax = f32::max(f32::min(t1, tmax), f32::min(t2, tmax));
+    }
+
+    tmin < tmax
 }
 
 trait Vec4Ext {

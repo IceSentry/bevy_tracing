@@ -1,4 +1,4 @@
-use bevy::{math::vec3, prelude::*};
+use bevy::{math::vec3, prelude::*, render::primitives::Aabb};
 
 #[derive(Debug, Default, Clone, Resource)]
 pub struct Scene {
@@ -71,6 +71,7 @@ pub struct TriangleMesh {
     pub transform: Transform,
     pub mesh: Mesh,
     pub material_id: usize,
+    pub aabb: Aabb,
 }
 
 #[derive(Debug, Clone, Copy)]

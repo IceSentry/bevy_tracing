@@ -18,7 +18,7 @@ use bevy_egui::{egui::TextureId, EguiContexts, EguiPlugin};
 use camera::{update_camera, ChernoCamera};
 
 use renderer::Renderer;
-use scene::{Light, Material, Scene, Sky, Sphere};
+use scene::{Light, Material, Scene, Sky, Sphere, TriangleMesh};
 use ui::{draw_dock_area, setup_ui};
 
 #[derive(Resource)]
@@ -32,8 +32,6 @@ pub struct Frametimes {
     render: f32,
     image_copy: f32,
 }
-#[derive(Resource)]
-pub struct SkyColor(pub Vec4);
 
 fn main() {
     App::new()
@@ -95,8 +93,8 @@ fn main() {
                 //     material_id: 0,
                 // },
                 Sphere {
-                    position: vec3(0.0, -101.0, 0.0),
-                    radius: 100.0,
+                    position: vec3(0.0, -201.0, 0.0),
+                    radius: 200.0,
                     material_id: 1,
                 },
                 Sphere {
@@ -104,21 +102,26 @@ fn main() {
                     radius: 0.5,
                     material_id: 2,
                 },
-                Sphere {
-                    position: vec3(0.0, -0.5, 0.0),
-                    radius: 0.5,
-                    material_id: 3,
-                },
+                // Sphere {
+                //     position: vec3(0.0, -0.5, 0.0),
+                //     radius: 0.5,
+                //     material_id: 3,
+                // },
                 Sphere {
                     position: vec3(1.25, -0.5, 0.0),
                     radius: 0.5,
                     material_id: 4,
                 },
             ],
-            meshes: vec![TriangleMesh {
-                transform: Transform::from_xyz(0.0, 0.0, -1.0),
-                mesh: Cube { size: 1.0 }.into(),
-                material_id: 1,
+            meshes: vec![{
+                let mesh: Mesh = Cube { size: 1.0 }.into();
+                let aabb = mesh.compute_aabb().unwrap();
+                TriangleMesh {
+                    transform: Transform::from_xyz(0.0, 0.0, 0.0),
+                    mesh,
+                    material_id: 0,
+                    aabb,
+                }
             }],
         })
         .add_startup_system(setup_renderer)

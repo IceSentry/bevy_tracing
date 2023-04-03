@@ -15,7 +15,7 @@ Some more specific algorithms are linked directly in the code where they are use
 
 ## Features
 
-- Multitheading using rayon
+- Multithreading using rayon
 - *very* simple shading
 - Spheres
 - Triangles

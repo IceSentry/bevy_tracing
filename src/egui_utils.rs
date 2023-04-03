@@ -87,7 +87,7 @@ pub fn drag_f32_clamp(
     ui: &mut egui::Ui,
     value: &mut f32,
     speed: f32,
-    range: RangeInclusive<usize>,
+    range: RangeInclusive<f32>,
 ) -> bool {
     let mut changed = false;
     ui.columns(1, |ui| {

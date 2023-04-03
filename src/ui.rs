@@ -6,7 +6,7 @@ use crate::{
     },
     renderer::Renderer,
     scene::Scene,
-    Frametimes, ViewportEguiTexture, ViewportSize,
+    Frametimes, ViewportEguiTexture, ViewportScale, ViewportSize,
 };
 
 use bevy::prelude::*;
@@ -53,6 +53,7 @@ pub fn draw_dock_area(
     render_dt: Res<Frametimes>,
     mut camera: ResMut<ChernoCamera>,
     mut renderer: ResMut<Renderer>,
+    mut viewport_scale: ResMut<ViewportScale>,
 ) {
     puffin::profile_function!();
     let mut tab_viewer = TabViewer {
@@ -64,6 +65,7 @@ pub fn draw_dock_area(
         scene: &mut scene,
         camera: &mut camera,
         renderer: &mut renderer,
+        viewport_scale: &mut viewport_scale.0,
     };
 
     DockArea::new(&mut tree)
@@ -79,6 +81,7 @@ pub struct TabViewer<'a> {
     pub scene: &'a mut Scene,
     pub camera: &'a mut ChernoCamera,
     pub renderer: &'a mut Renderer,
+    pub viewport_scale: &'a mut f32,
 }
 
 impl<'a> egui_dock::TabViewer for TabViewer<'a> {
@@ -136,7 +139,7 @@ impl<'a> egui_dock::TabViewer for TabViewer<'a> {
                             ui.end_row();
 
                             ui.label("Intensity");
-                            reset |= drag_f32_clamp(ui, &mut light.intensity, 0.025, 0..=1);
+                            reset |= drag_f32_clamp(ui, &mut light.intensity, 0.025, 0.0..=1.0);
                             ui.end_row();
                         });
                     ui.separator();
@@ -152,11 +155,11 @@ impl<'a> egui_dock::TabViewer for TabViewer<'a> {
                             ui.end_row();
 
                             ui.label("Roughness");
-                            reset |= drag_f32_clamp(ui, &mut material.roughness, 0.025, 0..=1);
+                            reset |= drag_f32_clamp(ui, &mut material.roughness, 0.025, 0.0..=1.0);
                             ui.end_row();
 
                             ui.label("Metallic");
-                            reset |= drag_f32_clamp(ui, &mut material.metallic, 0.025, 0..=1);
+                            reset |= drag_f32_clamp(ui, &mut material.metallic, 0.025, 0.0..=1.0);
                             ui.end_row();
                         });
                     ui.separator();
@@ -212,6 +215,11 @@ impl<'a> egui_dock::TabViewer for TabViewer<'a> {
 
                 ui.checkbox(&mut self.renderer.accumulate, "Accumulate");
                 reset |= ui.button("Reset").clicked();
+
+                ui.horizontal(|ui| {
+                    ui.label("Viewport Scale");
+                    reset |= drag_f32_clamp(ui, self.viewport_scale, 0.05, 0.1..=1.0);
+                });
             }
         };
         if reset {

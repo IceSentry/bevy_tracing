@@ -34,6 +34,9 @@ pub struct Frametimes {
     image_copy: f32,
 }
 
+#[derive(Resource)]
+pub struct ViewportScale(pub f32);
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
@@ -48,6 +51,7 @@ fn main() {
         // .insert_resource(ShowProfiler(true))
         .add_plugin(EguiPlugin)
         .init_resource::<Frametimes>()
+        .insert_resource(ViewportScale(1.0))
         .insert_resource(ChernoCamera::new(45.0, 0.1, 100.0))
         // TODO use bevy scene feature
         .insert_resource(Scene {
@@ -194,12 +198,16 @@ fn resize_image(
     mut images: ResMut<Assets<Image>>,
     mut renderer: ResMut<Renderer>,
     mut camera: ResMut<ChernoCamera>,
+    viewport_scale: Res<ViewportScale>,
 ) {
     let image = images.get_mut(&viewport_image.0).unwrap();
-    if image.size().x != viewport_size.0.x || image.size().y != viewport_size.0.y {
+    if image.size().x != viewport_size.0.x
+        || image.size().y != viewport_size.0.y
+        || viewport_scale.is_changed()
+    {
         let size = Extent3d {
-            width: viewport_size.0.x as u32,
-            height: viewport_size.0.y as u32,
+            width: (viewport_size.0.x * viewport_scale.0) as u32,
+            height: (viewport_size.0.y * viewport_scale.0) as u32,
             ..default()
         };
         // This also clears the image with 0

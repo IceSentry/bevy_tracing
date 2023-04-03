@@ -71,8 +71,10 @@ impl Renderer {
             .zip(&mut self.accumulation_data)
             .enumerate()
             .for_each(|(pixel_index, (pixel, accumulated_pixel))| {
+                // This block runs in parallel for every pixel
                 let color = per_pixel(scene, camera, pixel_index, self.bounces);
 
+                // accumulate the color over multiple frames
                 *accumulated_pixel += color;
                 let mut accumulated_color = *accumulated_pixel;
                 accumulated_color /= self.samples as f32;
@@ -88,11 +90,17 @@ impl Renderer {
         }
     }
 
+    /// Resets the frame index.
+    /// This will force the renderer to reset the accumulation date and start accumulating again.
     pub fn reset_frame_index(&mut self) {
         self.samples = 1;
     }
 }
 
+/// Computes a color gradient simulating a sky
+///
+/// Reference:
+/// * Sebastian Lague: https://youtu.be/Qz0KTGYJtUk?t=1207
 fn sky_color(scene: &Scene, ray: &Ray) -> Vec3 {
     let sky_gradient_t = smoothstep(0.0, 0.4, ray.direction.y).powf(0.35);
     let sky_gradient = Vec3::lerp(
@@ -100,6 +108,7 @@ fn sky_color(scene: &Scene, ray: &Ray) -> Vec3 {
         scene.sky.zenith_color,
         sky_gradient_t,
     );
+    // FIXME This is supposed to draw a circle for the sun, but it doesn't work correctly
     // let sun = ray
     //     .direction
     //     .dot(scene.sky.sun_direction)
@@ -161,52 +170,58 @@ fn per_pixel(scene: &Scene, camera: &CustomCamera, pixel_index: usize, bounces: 
 }
 
 fn trace_ray(ray: &Ray, scene: &Scene) -> Option<HitPayload> {
+    // We keep sphere and triangle separately and then keep the closest one at the end
     let mut sphere_hit_distance = f32::MAX;
     let mut triangle_hit_distance = f32::MAX;
 
+    // Find closest sphere
     let mut closest_sphere: Option<usize> = None;
     for (i, sphere) in scene.spheres.iter().enumerate() {
-        match sphere_intersect(ray, sphere) {
-            None => continue,
-            Some(closest_t) => {
-                if closest_t > 0.0 && closest_t < sphere_hit_distance {
-                    sphere_hit_distance = closest_t;
-                    closest_sphere = Some(i);
-                }
+        if let Some(closest_t) = sphere_intersect(ray, sphere) {
+            // Sphere intersection was found
+            if closest_t > 0.0 && closest_t < sphere_hit_distance {
+                sphere_hit_distance = closest_t;
+                closest_sphere = Some(i);
             }
         }
     }
 
+    // Find closest triangle and it's mesh id
     let mut normal = Vec3A::ZERO;
     let mut closest_mesh: Option<usize> = None;
     for (i, mesh) in scene.meshes.iter().enumerate() {
+        // Check the AABB first to avoid unnecessary checks
         if !aabb_intersect(ray, mesh.aabb) {
             continue;
         }
 
-        let Some(Some(positions)) = mesh
+        // get vertex positions
+        let Some(positions) = mesh
             .mesh
             .attribute(Mesh::ATTRIBUTE_POSITION)
-            .map(|x| x.as_float3())
+            .and_then(|x| x.as_float3())
         else {
             panic!("Vertex positions attribute should exist and be float3");
         };
-        let Some(Some(normals)) = mesh
+        // get vertex normals
+        let Some(normals) = mesh
             .mesh
             .attribute(Mesh::ATTRIBUTE_NORMAL)
-            .map(|x| x.as_float3())
+            .and_then(|x| x.as_float3())
         else {
             panic!("Vertex normals attribute should exist and be float3");
         };
 
+        // get indices
         let Some(Indices::U32(indices)) = mesh.mesh.indices() else {
             panic!("Only U32 indices are supported")
         };
 
-        for indices in indices.chunks(3) {
-            let [i0, i1, i2] = indices else { unreachable!() };
-
-            match triangle_intersect(
+        // loop triangles
+        for triangle in indices.chunks(3) {
+            let [i0, i1, i2] = triangle else { unreachable!() };
+            // TODO handle transform
+            if let Some((closest_t, hit_normal)) = triangle_intersect(
                 ray,
                 positions[*i0 as usize].into(),
                 positions[*i1 as usize].into(),
@@ -215,19 +230,19 @@ fn trace_ray(ray: &Ray, scene: &Scene) -> Option<HitPayload> {
                 normals[*i1 as usize].into(),
                 normals[*i2 as usize].into(),
             ) {
-                None => continue,
-                Some((closest_t, hit_normal)) => {
-                    if closest_t > 0.0 && closest_t < triangle_hit_distance {
-                        triangle_hit_distance = closest_t;
-                        normal = hit_normal;
-                        closest_mesh = Some(i);
-                    }
+                // Triangle intersection was found
+                if closest_t > 0.0 && closest_t < triangle_hit_distance {
+                    triangle_hit_distance = closest_t;
+                    normal = hit_normal;
+                    closest_mesh = Some(i);
                 }
             }
         }
     }
 
+    // a sphere was hit
     if let Some(sphere_index) = closest_sphere {
+        // the sphere is in front of a triangle
         if sphere_hit_distance < triangle_hit_distance {
             let sphere = scene.spheres[sphere_index];
             let origin = Vec3::from(ray.origin) - sphere.position;
@@ -241,7 +256,9 @@ fn trace_ray(ray: &Ray, scene: &Scene) -> Option<HitPayload> {
         }
     }
 
+    // a triangle was hit
     if let Some(mesh_index) = closest_mesh {
+        // the triangle is in front of a sphere
         if triangle_hit_distance < sphere_hit_distance {
             let mesh = &scene.meshes[mesh_index];
             let translation = mesh.transform.translation;
@@ -259,6 +276,12 @@ fn trace_ray(ray: &Ray, scene: &Scene) -> Option<HitPayload> {
     None
 }
 
+/// Computes the intersection between a ray and a sphere.
+///
+/// Returns `None` if no intersection is found.
+///
+/// Reference:
+/// * https://github.com/TheCherno/RayTracing/blob/d13e0e07f13157c4711d664240717e0f9ec79f30/RayTracing/src/Renderer.cpp#L158
 fn sphere_intersect(ray: &Ray, sphere: &Sphere) -> Option<f32> {
     let origin = ray.origin - Vec3A::from(sphere.position);
 
@@ -276,8 +299,14 @@ fn sphere_intersect(ray: &Ray, sphere: &Sphere) -> Option<f32> {
     Some(closest_t)
 }
 
-// Scratch a pixel: https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/moller-trumbore-ray-triangle-intersection.html
-// Sebastian Lague: https://youtu.be/Qz0KTGYJtUk?t=1419
+/// Computes the intersection between a ray and a triangle.
+///
+/// Returns `None` if no intersection is found.
+///
+/// References:
+/// * Scratch a pixel: https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/moller-trumbore-ray-triangle-intersection.html
+/// * Sebastian Lague: https://youtu.be/Qz0KTGYJtUk?t=1419
+/// * Muller-Trumbore intersection: https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
 #[allow(non_snake_case)]
 fn triangle_intersect(
     ray: &Ray,
@@ -293,8 +322,8 @@ fn triangle_intersect(
     let p_vec = ray.direction.cross(v0v2);
     let det = v0v1.dot(p_vec);
 
-    if det < f32::EPSILON {
-        return None;
+    if det > -f32::EPSILON && det < f32::EPSILON {
+        return None; // the ray is parallel to the triangle.
     }
 
     let inv_det = 1.0 / det;
@@ -311,15 +340,27 @@ fn triangle_intersect(
         return None;
     }
 
+    // At this stage we can compute t to find out where the intersection point is on the line.
     let t = v0v2.dot(q_vec) * inv_det;
-    let w = 1.0 - u - v;
-    let N = (n0 * w + n1 * u + n2 * v).normalize();
-    Some((t, N))
+    // ray intersection
+    if t > f32::EPSILON {
+        // compute normal vector
+        let w = 1.0 - u - v;
+        let N = (n0 * w + n1 * u + n2 * v).normalize();
+        Some((t, N))
+    } else {
+        // This means that there is a line intersection but not a ray intersection.
+        None
+    }
 }
 
-// https://tavianator.com/2022/ray_box_boundary.html
+/// Computes the intersection between a ray and an AABB.
+///
+/// Reference:
+/// * https://tavianator.com/2022/ray_box_boundary.html
 fn aabb_intersect(ray: &Ray, aabb: Aabb) -> bool {
     let mut tmin: f32 = 0.0;
+    // TODO consider passing tmax as a parameter to avoid checking boxes that are too far
     let mut tmax: f32 = f32::INFINITY;
 
     for i in 0..3 {

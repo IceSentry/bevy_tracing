@@ -1,4 +1,5 @@
 mod camera;
+mod math_utils;
 mod renderer;
 mod scene;
 mod ui;
@@ -17,7 +18,7 @@ use bevy_egui::{egui::TextureId, EguiContexts, EguiPlugin};
 use camera::{update_camera, ChernoCamera};
 
 use renderer::Renderer;
-use scene::{Light, Material, Scene, Sphere};
+use scene::{Light, Material, Scene, Sky, Sphere};
 use ui::{draw_dock_area, setup_ui};
 
 #[derive(Resource)]
@@ -51,7 +52,11 @@ fn main() {
         .insert_resource(ChernoCamera::new(45.0, 0.1, 100.0))
         // TODO use bevy scene feature
         .insert_resource(Scene {
-            sky_color: vec3(0.6, 0.7, 0.9),
+            sky: Sky {
+                zenith_color: vec3(0.6, 0.7, 0.9),
+                ground_color: vec3(0.7, 0.7, 0.7),
+                ..default()
+            },
             lights: vec![Light {
                 direction: vec3(1.0, 1.0, 1.0),
                 intensity: 1.0,
@@ -69,17 +74,17 @@ fn main() {
                 },
                 Material {
                     albedo: vec3(1.0, 0.0, 0.0),
-                    roughness: 0.0,
+                    roughness: 1.0,
                     ..default()
                 },
                 Material {
                     albedo: vec3(0.0, 1.0, 0.0),
-                    roughness: 0.0,
+                    roughness: 1.0,
                     ..default()
                 },
                 Material {
                     albedo: vec3(0.0, 0.0, 1.0),
-                    roughness: 0.0,
+                    roughness: 1.0,
                     ..default()
                 },
             ],

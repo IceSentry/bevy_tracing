@@ -4,6 +4,7 @@ use rayon::prelude::{IndexedParallelIterator, IntoParallelRefMutIterator, Parall
 
 use crate::{
     camera::ChernoCamera,
+    math_utils::{reflect, smoothstep},
     scene::{Scene, Sphere},
 };
 
@@ -87,9 +88,23 @@ impl Renderer {
     }
 }
 
-// For the incident vector I and surface orientation N, returns the reflection direction
-fn reflect(i: Vec3, n: Vec3) -> Vec3 {
-    i - 2.0 * n.dot(i) * n
+fn sky_color(scene: &Scene, ray: &Ray) -> Vec3 {
+    let sky_gradient_t = smoothstep(0.0, 0.4, ray.direction.y).powf(0.35);
+    let sky_gradient = Vec3::lerp(
+        scene.sky.horizon_color,
+        scene.sky.zenith_color,
+        sky_gradient_t,
+    );
+    // let sun = ray
+    //     .direction
+    //     .dot(scene.sky.sun_direction)
+    //     .max(0.0)
+    //     .powf(scene.sky.sun_focus)
+    //     * scene.sky.sun_intensity;
+
+    let ground_to_sky_t = smoothstep(-0.01, 0.0, ray.direction.y);
+    // let sun_mask = (ground_to_sky_t >= 1.0) as i32 as f32;
+    Vec3::lerp(scene.sky.ground_color, sky_gradient, ground_to_sky_t) // + sun * sun_mask
 }
 
 fn per_pixel(scene: &Scene, camera: &ChernoCamera, pixel_index: usize, bounces: u8) -> Vec4 {
@@ -103,13 +118,15 @@ fn per_pixel(scene: &Scene, camera: &ChernoCamera, pixel_index: usize, bounces: 
     for _ in 0..bounces {
         match trace_ray(&ray, scene) {
             None => {
-                color += scene.sky_color * multiplier;
+                color += sky_color(scene, &ray) * multiplier;
                 break;
             }
             Some(payload) => {
                 let sphere = scene.spheres[payload.object_index];
                 let material = scene.materials[sphere.material_id];
                 let mut sphere_color = material.albedo;
+
+                // TODO handle sun shading separately
 
                 let mut light_intensity = 0.0;
                 for light in &scene.lights {

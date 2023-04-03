@@ -100,9 +100,25 @@ impl<'a> egui_dock::TabViewer for TabViewer<'a> {
 
                 ui.heading("Sky");
                 egui::Grid::new("sky_grid").num_columns(2).show(ui, |ui| {
-                    ui.label("Color");
-                    reset |= drag_vec3_color(ui, &mut self.scene.sky_color);
+                    ui.label("Ground Color");
+                    reset |= drag_vec3_color(ui, &mut self.scene.sky.ground_color);
                     ui.end_row();
+                    ui.label("Horizon Color");
+                    reset |= drag_vec3_color(ui, &mut self.scene.sky.horizon_color);
+                    ui.end_row();
+                    ui.label("Zenith Color");
+                    reset |= drag_vec3_color(ui, &mut self.scene.sky.zenith_color);
+                    ui.end_row();
+
+                    // ui.label("Direction");
+                    // reset |= drag_vec3(ui, &mut self.scene.sky.sun_direction, 0.025);
+                    // ui.end_row();
+                    // ui.label("Focus");
+                    // reset |= drag_f32(ui, &mut self.scene.sky.sun_focus, 0.025);
+                    // ui.end_row();
+                    // ui.label("Intensity");
+                    // reset |= drag_f32_clamp(ui, &mut self.scene.sky.sun_intensity, 0.005, 0..=1);
+                    // ui.end_row();
                 });
                 ui.separator();
 
@@ -215,6 +231,43 @@ fn drag_vec3(ui: &mut egui::Ui, value: &mut Vec3, speed: f32) -> bool {
             .changed();
         changed |= ui[2]
             .add_sized([0.0, 0.0], egui::DragValue::new(&mut value.z).speed(speed))
+            .changed();
+    });
+    changed
+}
+
+#[allow(unused)]
+fn drag_vec3_clamp(
+    ui: &mut egui::Ui,
+    value: &mut Vec3,
+    speed: f32,
+    range: RangeInclusive<f32>,
+) -> bool {
+    let mut changed = false;
+    ui.columns(3, |ui| {
+        changed |= ui[0]
+            .add_sized(
+                [0.0, 0.0],
+                egui::DragValue::new(&mut value.x)
+                    .speed(speed)
+                    .clamp_range(range.clone()),
+            )
+            .changed();
+        changed |= ui[1]
+            .add_sized(
+                [0.0, 0.0],
+                egui::DragValue::new(&mut value.y)
+                    .speed(speed)
+                    .clamp_range(range.clone()),
+            )
+            .changed();
+        changed |= ui[2]
+            .add_sized(
+                [0.0, 0.0],
+                egui::DragValue::new(&mut value.z)
+                    .speed(speed)
+                    .clamp_range(range.clone()),
+            )
             .changed();
     });
     changed

@@ -1,6 +1,8 @@
 # bevy_tracing
 
-This is a simple path tracer using bevy and egui.
+Simple path tracer using bevy and egui.
+
+![preview](bevy_tracing.png)
 
 It is based on a few resources:
 
@@ -20,3 +22,5 @@ Some more specific algorithms are linked directly in the code where they are use
 - Aabb test to accelerate triangle intersection testing
 - Simple sky gradient
 - Interactive UI to modify the scene at runtime
+- Accumulate rays over time if nothing moves
+- Customizable render scale

@@ -189,6 +189,27 @@ impl<'a> egui_dock::TabViewer for TabViewer<'a> {
                         });
                     ui.separator();
                 }
+
+                ui.heading("Meshes");
+                for (i, mesh) in self.scene.meshes.iter_mut().enumerate() {
+                    egui::Grid::new(format!("mesh_grid_{i}"))
+                        .num_columns(2)
+                        .show(ui, |ui| {
+                            ui.label("Position");
+                            reset |= drag_vec3(ui, &mut mesh.transform.translation, 0.1);
+                            ui.end_row();
+
+                            ui.label("Material id");
+                            reset |= drag_usize(
+                                ui,
+                                &mut mesh.material_id,
+                                1.0,
+                                self.scene.materials.len() - 1,
+                            );
+                            ui.end_row();
+                        });
+                    ui.separator();
+                }
             }
             Tabs::Settings => {
                 ui.label(format!(

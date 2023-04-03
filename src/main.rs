@@ -8,7 +8,7 @@ use std::time::Instant;
 
 use bevy::{
     math::vec3,
-    prelude::*,
+    prelude::{shape::Cube, *},
     render::render_resource::{
         Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
     },
@@ -115,6 +115,11 @@ fn main() {
                     material_id: 4,
                 },
             ],
+            meshes: vec![TriangleMesh {
+                transform: Transform::from_xyz(0.0, 0.0, -1.0),
+                mesh: Cube { size: 1.0 }.into(),
+                material_id: 1,
+            }],
         })
         .add_startup_system(setup_renderer)
         .add_startup_system(setup_ui)

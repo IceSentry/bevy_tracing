@@ -5,6 +5,7 @@ pub struct Scene {
     pub sky: Sky,
     pub materials: Vec<Material>,
     pub spheres: Vec<Sphere>,
+    pub meshes: Vec<TriangleMesh>,
     pub lights: Vec<Light>,
 }
 
@@ -63,6 +64,13 @@ impl Default for Sphere {
             material_id: 0,
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct TriangleMesh {
+    pub transform: Transform,
+    pub mesh: Mesh,
+    pub material_id: usize,
 }
 
 #[derive(Debug, Clone, Copy)]

@@ -652,9 +652,9 @@ dependencies = [
 
 [[package]]
 name = "bevy_egui"
-version = "0.20.1"
+version = "0.20.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ae1391dc1820f8bb3f8f489f2348cfa5f5bd0970a4c6bcb0c1a011f65ae1b4d"
+checksum = "f3c40ec476443b97d5d9c6f40668da7ded2d83b13955a7c94c062ad2b6f98120"
 dependencies = [
  "arboard",
  "bevy 0.10.1",
@@ -1322,6 +1322,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_tracing"
+version = "0.1.0"
+dependencies = [
+ "bevy 0.10.1",
+ "bevy_egui",
+ "bevy_puffin",
+ "egui_dock",
+ "image",
+ "nanorand",
+ "puffin",
+ "puffin_egui",
+ "rayon",
+]
+
+[[package]]
 name = "bevy_transform"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1634,21 +1649,6 @@ name = "cfg_aliases"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fd16c4719339c4530435d38e511904438d07cce7950afa3718a84ac36c10e89e"
-
-[[package]]
-name = "cherno_tracing"
-version = "0.1.0"
-dependencies = [
- "bevy 0.10.1",
- "bevy_egui",
- "bevy_puffin",
- "egui_dock",
- "image",
- "nanorand",
- "puffin",
- "puffin_egui",
- "rayon",
-]
 
 [[package]]
 name = "clang-sys"
@@ -2005,9 +2005,9 @@ dependencies = [
 
 [[package]]
 name = "egui_dock"
-version = "0.4.1"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "994c2045c38bed1a5f27f833d5f0b49499c392b1912e712e9bae6a5132c89c17"
+checksum = "be7e6eb63cb936413bd2a4f54be4a9ef53a48252f25864f5f946d4954d7332bd"
 dependencies = [
  "egui",
 ]
@@ -2323,9 +2323,9 @@ dependencies = [
 
 [[package]]
 name = "gif"
-version = "0.11.4"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3edd93c6756b4dfaf2709eafcc345ba2636565295c198a9cfbf75fa5e3e00b06"
+checksum = "80792593675e051cf94a4b111980da2ba60d4a83e43e0048c5693baab3977045"
 dependencies = [
  "color_quant",
  "weezl",
@@ -2612,9 +2612,9 @@ dependencies = [
 
 [[package]]
 name = "image"
-version = "0.24.5"
+version = "0.24.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69b7ea949b537b0fd0af141fff8c77690f2ce96f4f41f042ccb6c69c6c965945"
+checksum = "527909aa81e20ac3a44803521443a765550f09b5130c2c2fa1ea59c2f8f50a3a"
 dependencies = [
  "bytemuck",
  "byteorder",
@@ -2625,7 +2625,7 @@ dependencies = [
  "num-rational",
  "num-traits",
  "png",
- "scoped_threadpool",
+ "qoi",
  "tiff",
 ]
 
@@ -3559,6 +3559,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "qoi"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f6d64c71eb498fe9eae14ce4ec935c555749aef511cca85b5568910d6e48001"
+dependencies = [
+ "bytemuck",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3742,12 +3751,6 @@ checksum = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
 dependencies = [
  "winapi-util",
 ]
-
-[[package]]
-name = "scoped_threadpool"
-version = "0.1.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d51f5df5af43ab3f1360b429fa5e0152ac5ce8c0bd6485cae490332e96846a8"
 
 [[package]]
 name = "scopeguard"

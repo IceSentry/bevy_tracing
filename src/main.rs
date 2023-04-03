@@ -16,7 +16,7 @@ use bevy::{
     window::PresentMode,
 };
 use bevy_egui::{egui::TextureId, EguiContexts, EguiPlugin};
-use camera::{update_camera, ChernoCamera};
+use camera::{update_camera, CustomCamera};
 
 use renderer::Renderer;
 use scene::{Light, Material, Scene, Sky, Sphere, TriangleMesh};
@@ -41,7 +41,7 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                title: "Cherno Tracing".to_string(),
+                title: "Bevy Tracing".to_string(),
                 present_mode: PresentMode::AutoNoVsync,
                 ..default()
             }),
@@ -52,7 +52,7 @@ fn main() {
         .add_plugin(EguiPlugin)
         .init_resource::<Frametimes>()
         .insert_resource(ViewportScale(1.0))
-        .insert_resource(ChernoCamera::new(45.0, 0.1, 100.0))
+        .insert_resource(CustomCamera::new(45.0, 0.1, 100.0))
         // TODO use bevy scene feature
         .insert_resource(Scene {
             sky: Sky {
@@ -197,7 +197,7 @@ fn resize_image(
     viewport_size: Res<ViewportSize>,
     mut images: ResMut<Assets<Image>>,
     mut renderer: ResMut<Renderer>,
-    mut camera: ResMut<ChernoCamera>,
+    mut camera: ResMut<CustomCamera>,
     viewport_scale: Res<ViewportScale>,
 ) {
     let image = images.get_mut(&viewport_image.0).unwrap();
@@ -223,7 +223,7 @@ fn render(
     mut images: ResMut<Assets<Image>>,
     mut renderer: ResMut<Renderer>,
     mut frametimes: ResMut<Frametimes>,
-    camera: Res<ChernoCamera>,
+    camera: Res<CustomCamera>,
     scene: Res<Scene>,
 ) {
     // TODO use diagnostic system

@@ -9,7 +9,7 @@ use rayon::prelude::{IndexedParallelIterator, IntoParallelRefMutIterator, Parall
 use crate::renderer::Renderer;
 
 #[derive(Debug, Default, Clone, Resource)]
-pub struct ChernoCamera {
+pub struct CustomCamera {
     pub projection: Mat4,
     pub view: Mat4,
     pub inverse_projection: Mat4,
@@ -28,7 +28,7 @@ pub struct ChernoCamera {
     viewport_height: u32,
 }
 
-impl ChernoCamera {
+impl CustomCamera {
     pub fn new(vertical_fov: f32, near_clip: f32, far_clip: f32) -> Self {
         Self {
             vertical_fov,
@@ -78,7 +78,7 @@ impl ChernoCamera {
             Vec3A::ZERO,
         );
 
-        // This is called everytime the camera moves so it's important to make it fast
+        // This is called every time the camera moves so it's important to make it fast
         self.ray_directions
             .par_iter_mut()
             .enumerate()
@@ -102,7 +102,7 @@ impl ChernoCamera {
 }
 
 pub fn update_camera(
-    mut camera: ResMut<ChernoCamera>,
+    mut camera: ResMut<CustomCamera>,
     mut mouse_motion_events: EventReader<MouseMotion>,
     mouse_button_input: Res<Input<MouseButton>>,
     keyboard_input: Res<Input<KeyCode>>,

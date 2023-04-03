@@ -1,5 +1,5 @@
 use crate::{
-    camera::ChernoCamera,
+    camera::CustomCamera,
     egui_utils::{
         drag_f32, drag_f32_clamp, drag_u8, drag_usize, drag_vec3, drag_vec3_color,
         fmt_usize_separator,
@@ -51,7 +51,7 @@ pub fn draw_dock_area(
     viewport_egui_texture: Res<ViewportEguiTexture>,
     mut viewport_size: ResMut<ViewportSize>,
     render_dt: Res<Frametimes>,
-    mut camera: ResMut<ChernoCamera>,
+    mut camera: ResMut<CustomCamera>,
     mut renderer: ResMut<Renderer>,
     mut viewport_scale: ResMut<ViewportScale>,
 ) {
@@ -79,7 +79,7 @@ pub struct TabViewer<'a> {
     pub dt: f32,
     pub frametimes: &'a Frametimes,
     pub scene: &'a mut Scene,
-    pub camera: &'a mut ChernoCamera,
+    pub camera: &'a mut CustomCamera,
     pub renderer: &'a mut Renderer,
     pub viewport_scale: &'a mut f32,
 }

@@ -7,7 +7,7 @@ use nanorand::Rng;
 use rayon::prelude::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
 use crate::{
-    camera::ChernoCamera,
+    camera::CustomCamera,
     math_utils::{reflect, smoothstep},
     scene::{Scene, Sphere},
 };
@@ -61,7 +61,7 @@ impl Renderer {
         self.reset_frame_index();
     }
 
-    pub fn render(&mut self, camera: &ChernoCamera, scene: &Scene) {
+    pub fn render(&mut self, camera: &CustomCamera, scene: &Scene) {
         if self.samples == 1 {
             self.accumulation_data.fill(Vec4::ZERO);
         }
@@ -112,7 +112,7 @@ fn sky_color(scene: &Scene, ray: &Ray) -> Vec3 {
     Vec3::lerp(scene.sky.ground_color, sky_gradient, ground_to_sky_t) // + sun * sun_mask
 }
 
-fn per_pixel(scene: &Scene, camera: &ChernoCamera, pixel_index: usize, bounces: u8) -> Vec4 {
+fn per_pixel(scene: &Scene, camera: &CustomCamera, pixel_index: usize, bounces: u8) -> Vec4 {
     let mut ray = Ray {
         origin: Vec3A::from(camera.position),
         direction: camera.ray_directions[pixel_index],

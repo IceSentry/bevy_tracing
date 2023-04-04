@@ -6,7 +6,7 @@ use crate::{
     },
     renderer::Renderer,
     scene::Scene,
-    Frametimes, ViewportEguiTexture, ViewportScale, ViewportSize,
+    Frametimes, RenderScale, ViewportEguiTexture, ViewportSize,
 };
 
 use bevy::prelude::*;
@@ -53,7 +53,7 @@ pub fn draw_dock_area(
     render_dt: Res<Frametimes>,
     mut camera: ResMut<CustomCamera>,
     mut renderer: ResMut<Renderer>,
-    mut viewport_scale: ResMut<ViewportScale>,
+    mut viewport_scale: ResMut<RenderScale>,
 ) {
     puffin::profile_function!();
     let mut tab_viewer = TabViewer {
@@ -154,6 +154,14 @@ impl<'a> egui_dock::TabViewer for TabViewer<'a> {
                             reset |= drag_vec3_color(ui, &mut material.albedo);
                             ui.end_row();
 
+                            ui.label("Emissive");
+                            reset |= drag_vec3_color(ui, &mut material.emissive);
+                            ui.end_row();
+
+                            ui.label("Emissive intensity");
+                            reset |= drag_f32(ui, &mut material.emissive_intensity, 1.0);
+                            ui.end_row();
+
                             ui.label("Roughness");
                             reset |= drag_f32_clamp(ui, &mut material.roughness, 0.025, 0.0..=1.0);
                             ui.end_row();
@@ -232,6 +240,10 @@ impl<'a> egui_dock::TabViewer for TabViewer<'a> {
                 ui.horizontal(|ui| {
                     ui.label("Bounces");
                     reset |= drag_u8(ui, &mut self.renderer.bounces, 0.25);
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Rays per pixel");
+                    reset |= drag_u8(ui, &mut self.renderer.rays_per_pixel, 0.25);
                 });
 
                 ui.checkbox(&mut self.renderer.accumulate, "Accumulate");

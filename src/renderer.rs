@@ -3,7 +3,7 @@ use bevy::{
     prelude::*,
     render::{mesh::Indices, primitives::Aabb},
 };
-use nanorand::Rng;
+use nanorand::{tls::TlsWyRand, Rng, SeedableRng};
 use rayon::prelude::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
 use crate::{
@@ -36,6 +36,7 @@ pub struct Renderer {
     pub samples: usize,
     pub accumulate: bool,
     pub bounces: u8,
+    pub rays_per_pixel: u8,
 }
 
 impl Renderer {
@@ -48,6 +49,7 @@ impl Renderer {
             samples: 1,
             accumulate: true,
             bounces: 5,
+            rays_per_pixel: 5,
         }
     }
 
@@ -72,7 +74,13 @@ impl Renderer {
             .enumerate()
             .for_each(|(pixel_index, (pixel, accumulated_pixel))| {
                 // This block runs in parallel for every pixel
-                let color = per_pixel(scene, camera, pixel_index, self.bounces);
+                let mut rng = nanorand::tls_rng();
+
+                let mut color = Vec4::ZERO;
+                for _ in 0..self.rays_per_pixel {
+                    color += per_pixel(scene, camera, pixel_index, self.bounces, &mut rng);
+                }
+                color /= self.rays_per_pixel as f32;
 
                 // accumulate the color over multiple frames
                 *accumulated_pixel += color;
@@ -122,7 +130,13 @@ fn sky_color(scene: &Scene, ray: &Ray) -> Vec3 {
     Vec3::lerp(scene.sky.ground_color, sky_gradient, ground_to_sky_t) // + sun * sun_mask
 }
 
-fn per_pixel(scene: &Scene, camera: &CustomCamera, pixel_index: usize, bounces: u8) -> Vec4 {
+fn per_pixel(
+    scene: &Scene,
+    camera: &CustomCamera,
+    pixel_index: usize,
+    bounces: u8,
+    rng: &mut TlsWyRand,
+) -> Vec4 {
     let mut ray = Ray {
         origin: Vec3A::from(camera.position),
         direction: camera.ray_directions[pixel_index],
@@ -130,23 +144,23 @@ fn per_pixel(scene: &Scene, camera: &CustomCamera, pixel_index: usize, bounces: 
     };
     let mut multiplier = 1.0;
     let mut color = Vec3::ZERO;
-    let mut rng = nanorand::tls_rng();
+    let mut light = Vec3::ZERO;
     for _ in 0..bounces {
         if let Some(payload) = trace_ray(&ray, scene) {
             let material = scene.materials[payload.material_id];
 
-            let mut hit_color = material.albedo;
+            // let mut light_intensity = 0.0;
+            // for light in &scene.lights {
+            //     let light_dir = light.direction.normalize();
+            //     light_intensity += payload.world_normal.dot(light_dir).max(0.0) * light.intensity;
+            // }
 
-            let mut light_intensity = 0.0;
-            for light in &scene.lights {
-                let light_dir = light.direction.normalize();
-                light_intensity += payload.world_normal.dot(light_dir).max(0.0) * light.intensity;
-            }
+            let emitted_light = material.emissive * material.emissive_intensity;
+            light += emitted_light * color;
 
-            hit_color *= light_intensity;
-
+            let hit_color = material.albedo;
             color += hit_color * multiplier;
-            multiplier *= 0.5;
+            // multiplier *= 0.5;
 
             ray.origin = (payload.world_position + payload.world_normal * 0.0001).into();
 
@@ -165,7 +179,8 @@ fn per_pixel(scene: &Scene, camera: &CustomCamera, pixel_index: usize, bounces: 
             break;
         }
     }
-    color.extend(1.0)
+    // color.extend(1.0)
+    light.extend(1.0)
 }
 
 fn trace_ray(ray: &Ray, scene: &Scene) -> Option<HitPayload> {

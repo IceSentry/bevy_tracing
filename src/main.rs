@@ -35,7 +35,7 @@ pub struct Frametimes {
 }
 
 #[derive(Resource)]
-pub struct ViewportScale(pub f32);
+pub struct RenderScale(pub f32);
 
 fn main() {
     App::new()
@@ -51,19 +51,22 @@ fn main() {
         // .insert_resource(ShowProfiler(true))
         .add_plugin(EguiPlugin)
         .init_resource::<Frametimes>()
-        .insert_resource(ViewportScale(1.0))
+        .insert_resource(RenderScale(0.75))
         .insert_resource(CustomCamera::new(45.0, 0.1, 100.0))
         // TODO use bevy scene feature
         .insert_resource(Scene {
-            sky: Sky {
-                zenith_color: vec3(0.6, 0.7, 0.9),
-                ground_color: vec3(0.7, 0.7, 0.7),
-                ..default()
-            },
-            lights: vec![Light {
-                direction: vec3(1.0, 1.0, 1.0),
-                intensity: 1.0,
-            }],
+            // sky: Sky {
+            //     zenith_color: vec3(0.6, 0.7, 0.9),
+            //     horizon_color: Vec3::ONE,
+            //     ground_color: vec3(0.7, 0.7, 0.7),
+            // },
+            sky: Sky::BLACK,
+            lights: vec![
+            //     Light {
+            //     direction: vec3(1.0, 1.0, 1.0),
+            //     intensity: 1.0,
+            // }
+            ],
             materials: vec![
                 Material {
                     albedo: vec3(1.0, 0.0, 1.0),
@@ -72,7 +75,7 @@ fn main() {
                 },
                 Material {
                     albedo: vec3(0.0, 0.0, 0.0),
-                    roughness: 0.1,
+                    roughness: 1.0,
                     ..default()
                 },
                 Material {
@@ -88,6 +91,11 @@ fn main() {
                 Material {
                     albedo: vec3(0.0, 0.0, 1.0),
                     roughness: 1.0,
+                    ..default()
+                },
+                Material {
+                    emissive: vec3(1.0, 1.0, 1.0),
+                    emissive_intensity: 10.0,
                     ..default()
                 },
             ],
@@ -107,27 +115,34 @@ fn main() {
                     radius: 0.5,
                     material_id: 2,
                 },
-                // Sphere {
-                //     position: vec3(0.0, -0.5, 0.0),
-                //     radius: 0.5,
-                //     material_id: 3,
-                // },
+                Sphere {
+                    position: vec3(0.0, -0.5, 0.0),
+                    radius: 0.5,
+                    material_id: 3,
+                },
                 Sphere {
                     position: vec3(1.25, -0.5, 0.0),
                     radius: 0.5,
                     material_id: 4,
                 },
+                Sphere {
+                    position: vec3(20.0, 20.0, 20.0),
+                    radius: 10.0,
+                    material_id: 5,
+                },
             ],
-            meshes: vec![{
-                let mesh: Mesh = Cube { size: 1.0 }.into();
-                let aabb = mesh.compute_aabb().unwrap();
-                TriangleMesh {
-                    transform: Transform::from_xyz(0.0, 0.0, 0.0),
-                    mesh,
-                    material_id: 0,
-                    aabb,
-                }
-            }],
+            meshes: vec![
+            //     {
+            //     let mesh: Mesh = Cube { size: 1.0 }.into();
+            //     let aabb = mesh.compute_aabb().unwrap();
+            //     TriangleMesh {
+            //         transform: Transform::from_xyz(0.0, 0.0, 0.0),
+            //         mesh,
+            //         material_id: 0,
+            //         aabb,
+            //     }
+            // }
+            ],
         })
         .add_startup_system(setup_renderer)
         .add_startup_system(setup_ui)
@@ -198,19 +213,19 @@ fn resize_image(
     mut images: ResMut<Assets<Image>>,
     mut renderer: ResMut<Renderer>,
     mut camera: ResMut<CustomCamera>,
-    viewport_scale: Res<ViewportScale>,
+    render_scale: Res<RenderScale>,
     mut prev_scale: Local<f32>,
+    mut prev_viewport_size: Local<Vec2>,
 ) {
     let image = images.get_mut(&viewport_image.0).unwrap();
-    if image.size().x != viewport_size.0.x
-        || image.size().y != viewport_size.0.y
-        || viewport_scale.0 != *prev_scale
-    {
+    if viewport_size.0 != *prev_viewport_size || render_scale.0 != *prev_scale {
+        println!("reset");
         let size = Extent3d {
-            width: (viewport_size.0.x * viewport_scale.0) as u32,
-            height: (viewport_size.0.y * viewport_scale.0) as u32,
+            width: (viewport_size.0.x * render_scale.0) as u32,
+            height: (viewport_size.0.y * render_scale.0) as u32,
             ..default()
         };
+
         // This also clears the image with 0
         image.resize(size);
 
@@ -218,7 +233,8 @@ fn resize_image(
         renderer.resize(size.width as usize, size.height as usize);
     }
 
-    *prev_scale = viewport_scale.0;
+    *prev_scale = render_scale.0;
+    *prev_viewport_size = viewport_size.0;
 }
 
 fn render(

@@ -3,7 +3,8 @@ use bevy::{
     prelude::*,
     render::{mesh::Indices, primitives::Aabb},
 };
-use nanorand::{tls::TlsWyRand, Rng, SeedableRng};
+use rand::prelude::*;
+use rand_distr::Normal;
 use rayon::prelude::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
 use crate::{
@@ -74,7 +75,9 @@ impl Renderer {
             .enumerate()
             .for_each(|(pixel_index, (pixel, accumulated_pixel))| {
                 // This block runs in parallel for every pixel
-                let mut rng = nanorand::tls_rng();
+                let mut rng = rand::thread_rng();
+                // this helps with getting a consistent render but also not end up with the same rays every frame
+                StdRng::seed_from_u64(self.samples as u64);
 
                 let mut color = Vec4::ZERO;
                 for _ in 0..self.rays_per_pixel {
@@ -135,7 +138,7 @@ fn per_pixel(
     camera: &CustomCamera,
     pixel_index: usize,
     bounces: u8,
-    rng: &mut TlsWyRand,
+    rng: &mut ThreadRng,
 ) -> Vec4 {
     let mut ray = Ray {
         origin: Vec3A::from(camera.position),
@@ -145,9 +148,19 @@ fn per_pixel(
     let mut multiplier = 1.0;
     let mut color = Vec3::ZERO;
     let mut light = Vec3::ZERO;
-    for _ in 0..bounces {
+    for _ in 0..=bounces {
         if let Some(payload) = trace_ray(&ray, scene) {
             let material = scene.materials[payload.material_id];
+
+            ray.origin = (payload.world_position + payload.world_normal * 0.0001).into();
+
+            let normal = Normal::new(0.0, 0.5).unwrap();
+            let rand_dir = Vec3::new(normal.sample(rng), normal.sample(rng), normal.sample(rng));
+
+            ray.direction = reflect(
+                ray.direction,
+                (payload.world_normal + material.roughness * rand_dir).into(),
+            );
 
             // let mut light_intensity = 0.0;
             // for light in &scene.lights {
@@ -160,26 +173,13 @@ fn per_pixel(
 
             let hit_color = material.albedo;
             color += hit_color * multiplier;
-            // multiplier *= 0.5;
-
-            ray.origin = (payload.world_position + payload.world_normal * 0.0001).into();
-
-            let rand_dir = Vec3::new(
-                rng.generate::<f32>(),
-                rng.generate::<f32>(),
-                rng.generate::<f32>(),
-            ) - 0.5; // -0.5..0.5
-
-            ray.direction = reflect(
-                ray.direction,
-                (payload.world_normal + material.roughness * rand_dir).into(),
-            );
+            multiplier *= 0.5;
         } else {
             color += sky_color(scene, &ray) * multiplier;
+            light += sky_color(scene, &ray) * color;
             break;
         }
     }
-    // color.extend(1.0)
     light.extend(1.0)
 }
 

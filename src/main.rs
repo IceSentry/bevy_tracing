@@ -55,12 +55,12 @@ fn main() {
         .insert_resource(CustomCamera::new(45.0, 0.1, 100.0))
         // TODO use bevy scene feature
         .insert_resource(Scene {
-            // sky: Sky {
-            //     zenith_color: vec3(0.6, 0.7, 0.9),
-            //     horizon_color: Vec3::ONE,
-            //     ground_color: vec3(0.7, 0.7, 0.7),
-            // },
-            sky: Sky::BLACK,
+            sky: Sky {
+                zenith_color: vec3(0.6, 0.7, 0.9),
+                horizon_color: Vec3::ONE,
+                ground_color: vec3(0.7, 0.7, 0.7),
+            },
+            // sky: Sky::BLACK,
             lights: vec![
             //     Light {
             //     direction: vec3(1.0, 1.0, 1.0),
@@ -95,7 +95,7 @@ fn main() {
                 },
                 Material {
                     emissive: vec3(1.0, 1.0, 1.0),
-                    emissive_intensity: 10.0,
+                    emissive_intensity: 2.0,
                     ..default()
                 },
             ],
@@ -207,6 +207,7 @@ fn setup_renderer(
     commands.insert_resource(Renderer::new(size.width as usize, size.height as usize));
 }
 
+#[allow(clippy::too_many_arguments)]
 fn resize_image(
     viewport_image: Res<ViewportImage>,
     viewport_size: Res<ViewportSize>,

@@ -61,12 +61,10 @@ fn main() {
                 ground_color: vec3(0.7, 0.7, 0.7),
             },
             // sky: Sky::BLACK,
-            lights: vec![
-            //     Light {
-            //     direction: vec3(1.0, 1.0, 1.0),
-            //     intensity: 1.0,
-            // }
-            ],
+            lights: vec![Light {
+                direction: vec3(1.0, 1.0, 1.0),
+                intensity: 1.0,
+            }],
             materials: vec![
                 Material {
                     albedo: vec3(1.0, 0.0, 1.0),
@@ -91,11 +89,6 @@ fn main() {
                 Material {
                     albedo: vec3(0.0, 0.0, 1.0),
                     roughness: 1.0,
-                    ..default()
-                },
-                Material {
-                    emissive: vec3(1.0, 1.0, 1.0),
-                    emissive_intensity: 2.0,
                     ..default()
                 },
             ],
@@ -124,11 +117,6 @@ fn main() {
                     position: vec3(1.25, -0.5, 0.0),
                     radius: 0.5,
                     material_id: 4,
-                },
-                Sphere {
-                    position: vec3(20.0, 20.0, 20.0),
-                    radius: 10.0,
-                    material_id: 5,
                 },
             ],
             meshes: vec![

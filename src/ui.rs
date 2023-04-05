@@ -154,14 +154,6 @@ impl<'a> egui_dock::TabViewer for TabViewer<'a> {
                             reset |= drag_vec3_color(ui, &mut material.albedo);
                             ui.end_row();
 
-                            ui.label("Emissive");
-                            reset |= drag_vec3_color(ui, &mut material.emissive);
-                            ui.end_row();
-
-                            ui.label("Emissive intensity");
-                            reset |= drag_f32(ui, &mut material.emissive_intensity, 1.0);
-                            ui.end_row();
-
                             ui.label("Roughness");
                             reset |= drag_f32_clamp(ui, &mut material.roughness, 0.025, 0.0..=1.0);
                             ui.end_row();

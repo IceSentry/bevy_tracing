@@ -20,6 +20,7 @@ pub struct Sky {
 }
 
 impl Sky {
+    #[allow(unused)]
     pub const BLACK: Self = Self {
         zenith_color: Vec3::ZERO,
         horizon_color: Vec3::ZERO,
@@ -42,8 +43,6 @@ impl Default for Sky {
 #[derive(Debug, Clone, Copy)]
 pub struct Material {
     pub albedo: Vec3,
-    pub emissive: Vec3,
-    pub emissive_intensity: f32,
     pub roughness: f32,
     pub metallic: f32,
 }
@@ -52,8 +51,6 @@ impl Default for Material {
     fn default() -> Self {
         Self {
             albedo: Vec3::ONE,
-            emissive: Vec3::ZERO,
-            emissive_intensity: 0.0,
             roughness: 1.0,
             metallic: 0.0,
         }

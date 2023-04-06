@@ -1,3 +1,5 @@
+use std::ops::RangeInclusive;
+
 use bevy::{
     math::Vec3A,
     prelude::*,
@@ -152,17 +154,17 @@ fn per_pixel(
         if let Some(payload) = trace_ray(&ray, scene) {
             let material = scene.materials[payload.material_id];
 
-            let mut light_intensity = 0.0;
-            for light in &scene.lights {
-                let light_dir = light.direction.normalize();
-                light_intensity += payload.world_normal.dot(light_dir).max(0.0) * light.intensity;
-            }
+            let light_intensity = compute_light_intensity(
+                scene,
+                (ray.origin + payload.hit_distance * ray.direction).into(),
+                payload.world_normal,
+            );
 
             let mut hit_color = material.albedo;
             hit_color *= light_intensity;
 
             color += hit_color * multiplier;
-            multiplier *= 0.5;
+            multiplier *= 0.25;
 
             ray.origin = (payload.world_position + payload.world_normal * 0.0001).into();
 
@@ -180,26 +182,60 @@ fn per_pixel(
     color.extend(1.0)
 }
 
-fn trace_ray(ray: &Ray, scene: &Scene) -> Option<HitPayload> {
-    // We keep sphere and triangle separately and then keep the closest one at the end
-    let mut sphere_hit_distance = f32::MAX;
-    let mut triangle_hit_distance = f32::MAX;
+fn compute_light_intensity(scene: &Scene, position: Vec3, normal: Vec3) -> f32 {
+    let mut light_intensity = 0.0;
+    for light in &scene.lights {
+        let light_dir = light.direction.normalize();
 
-    // Find closest sphere
+        let light_dir_a = Vec3A::from(light_dir);
+        let shadow_ray = Ray {
+            origin: position.into(),
+            direction: light_dir_a,
+            inv_direction: 1.0 / light_dir_a,
+        };
+        if let (Some(_), _) = find_closest_sphere(&shadow_ray, scene, 0.001..=f32::INFINITY) {
+            break;
+        }
+        if let (Some(_), _, _) = find_closest_triangle(&shadow_ray, scene, 0.001..=f32::INFINITY) {
+            break;
+        }
+
+        let n_dot_l = normal.dot(light_dir);
+        // diffuse
+        if n_dot_l > 0.0 {
+            light_intensity += light.intensity * n_dot_l / normal.length() * light_dir.length();
+        }
+    }
+    light_intensity
+}
+
+fn find_closest_sphere(
+    ray: &Ray,
+    scene: &Scene,
+    hit_distance_range: RangeInclusive<f32>,
+) -> (Option<usize>, f32) {
+    let mut hit_distance = f32::MAX;
     let mut closest_sphere: Option<usize> = None;
     for (i, sphere) in scene.spheres.iter().enumerate() {
-        if let Some(closest_t) = sphere_intersect(ray, sphere) {
+        if let Some(closest_hit) = sphere_intersect(ray, sphere) {
             // Sphere intersection was found
-            if closest_t > 0.0 && closest_t < sphere_hit_distance {
-                sphere_hit_distance = closest_t;
+            if hit_distance_range.contains(&closest_hit) && closest_hit < hit_distance {
+                hit_distance = closest_hit;
                 closest_sphere = Some(i);
             }
         }
     }
+    (closest_sphere, hit_distance)
+}
 
-    // Find closest triangle and it's mesh id
+fn find_closest_triangle(
+    ray: &Ray,
+    scene: &Scene,
+    hit_distance_range: RangeInclusive<f32>,
+) -> (Option<usize>, f32, Vec3A) {
+    let mut hit_distance = f32::MAX;
     let mut normal = Vec3A::ZERO;
-    let mut closest_mesh: Option<usize> = None;
+    let mut mesh_id: Option<usize> = None;
     for (i, mesh) in scene.meshes.iter().enumerate() {
         // Check the AABB first to avoid unnecessary checks
         if !aabb_intersect(ray, mesh.aabb) {
@@ -232,7 +268,7 @@ fn trace_ray(ray: &Ray, scene: &Scene) -> Option<HitPayload> {
         for triangle in indices.chunks(3) {
             let [i0, i1, i2] = triangle else { unreachable!() };
             // TODO handle transform
-            if let Some((closest_t, hit_normal)) = triangle_intersect(
+            if let Some((closest_hit, hit_normal)) = triangle_intersect(
                 ray,
                 positions[*i0 as usize].into(),
                 positions[*i1 as usize].into(),
@@ -242,14 +278,23 @@ fn trace_ray(ray: &Ray, scene: &Scene) -> Option<HitPayload> {
                 normals[*i2 as usize].into(),
             ) {
                 // Triangle intersection was found
-                if closest_t > 0.0 && closest_t < triangle_hit_distance {
-                    triangle_hit_distance = closest_t;
+                if hit_distance_range.contains(&closest_hit) && closest_hit < hit_distance {
+                    hit_distance = closest_hit;
                     normal = hit_normal;
-                    closest_mesh = Some(i);
+                    mesh_id = Some(i);
                 }
             }
         }
     }
+    (mesh_id, hit_distance, normal)
+}
+
+fn trace_ray(ray: &Ray, scene: &Scene) -> Option<HitPayload> {
+    // handle spheres and triangles separately and then keep the closest one at the end
+    let (closest_sphere, sphere_hit_distance) =
+        find_closest_sphere(ray, scene, 0.001..=f32::INFINITY);
+    let (closest_mesh, triangle_hit_distance, triangle_normal) =
+        find_closest_triangle(ray, scene, 0.001..=f32::INFINITY);
 
     // a sphere was hit
     if let Some(sphere_index) = closest_sphere {
@@ -279,7 +324,7 @@ fn trace_ray(ray: &Ray, scene: &Scene) -> Option<HitPayload> {
                 hit_distance: triangle_hit_distance,
                 material_id: mesh.material_id,
                 world_position: hit_position + translation,
-                world_normal: normal.into(),
+                world_normal: triangle_normal.into(),
             });
         }
     }

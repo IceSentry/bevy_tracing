@@ -91,6 +91,11 @@ fn main() {
                     roughness: 1.0,
                     ..default()
                 },
+                Material {
+                    albedo: vec3(0.1, 0.1, 0.1),
+                    roughness: 1.0,
+                    ..default()
+                },
             ],
             spheres: vec![
                 // Sphere {
@@ -101,7 +106,7 @@ fn main() {
                 Sphere {
                     position: vec3(0.0, -201.0, 0.0),
                     radius: 200.0,
-                    material_id: 1,
+                    material_id: 5,
                 },
                 Sphere {
                     position: vec3(-1.25, -0.5, 0.0),

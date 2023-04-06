@@ -84,6 +84,7 @@ fn main() {
                 Material {
                     albedo: vec3(0.0, 1.0, 0.0),
                     roughness: 1.0,
+                    specular: 2.0,
                     ..default()
                 },
                 Material {

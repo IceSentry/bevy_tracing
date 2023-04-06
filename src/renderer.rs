@@ -158,6 +158,8 @@ fn per_pixel(
                 scene,
                 (ray.origin + payload.hit_distance * ray.direction).into(),
                 payload.world_normal,
+                // -ray.direction,
+                // material.specular,
             );
 
             let mut hit_color = material.albedo;
@@ -182,7 +184,13 @@ fn per_pixel(
     color.extend(1.0)
 }
 
-fn compute_light_intensity(scene: &Scene, position: Vec3, normal: Vec3) -> f32 {
+fn compute_light_intensity(
+    scene: &Scene,
+    position: Vec3,
+    normal: Vec3,
+    // view: Vec3A,
+    // s: f32,
+) -> f32 {
     let mut light_intensity = 0.0;
     for light in &scene.lights {
         let light_dir = light.direction.normalize();
@@ -203,8 +211,17 @@ fn compute_light_intensity(scene: &Scene, position: Vec3, normal: Vec3) -> f32 {
         let n_dot_l = normal.dot(light_dir);
         // diffuse
         if n_dot_l > 0.0 {
-            light_intensity += light.intensity * n_dot_l / normal.length() * light_dir.length();
+            light_intensity += light.intensity * n_dot_l / (normal.length() * light_dir.length());
         }
+
+        // specular
+        // if s != -1.0 {
+        //     let r = 2.0 * normal * normal.dot(light_dir) - light_dir;
+        //     let r_dot_v = r.dot(view.into());
+        //     if r_dot_v > 0.0 {
+        //         light_intensity += light.intensity * s.powf(r_dot_v / (r.length() * view.length()))
+        //     }
+        // }
     }
     light_intensity
 }

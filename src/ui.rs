@@ -161,6 +161,10 @@ impl<'a> egui_dock::TabViewer for TabViewer<'a> {
                             ui.label("Metallic");
                             reset |= drag_f32_clamp(ui, &mut material.metallic, 0.025, 0.0..=1.0);
                             ui.end_row();
+
+                            // ui.label("Specular");
+                            // reset |= drag_f32_clamp(ui, &mut material.specular, 1.0, 0.0..=1000.0);
+                            // ui.end_row();
                         });
                     ui.separator();
                 }

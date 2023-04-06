@@ -45,6 +45,7 @@ pub struct Material {
     pub albedo: Vec3,
     pub roughness: f32,
     pub metallic: f32,
+    pub specular: f32,
 }
 
 impl Default for Material {
@@ -53,6 +54,7 @@ impl Default for Material {
             albedo: Vec3::ONE,
             roughness: 1.0,
             metallic: 0.0,
+            specular: -1.0,
         }
     }
 }

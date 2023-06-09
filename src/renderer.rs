@@ -1,12 +1,12 @@
 use std::ops::RangeInclusive;
 
 use bevy::{
-    math::Vec3A,
+    math::{vec3, vec3a, Vec3A},
     prelude::*,
     render::{mesh::Indices, primitives::Aabb},
 };
 use rand::prelude::*;
-use rand_distr::Normal;
+use rand_distr::{Normal, StandardNormal};
 use rayon::prelude::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
 use crate::{
@@ -122,10 +122,11 @@ fn sky_color(scene: &Scene, ray: &Ray) -> Vec3 {
         scene.sky.zenith_color,
         sky_gradient_t,
     );
+
     // FIXME This is supposed to draw a circle for the sun, but it doesn't work correctly
     // let sun = ray
     //     .direction
-    //     .dot(scene.sky.sun_direction)
+    //     .dot(scene.sky.sun_direction.into())
     //     .max(0.0)
     //     .powf(scene.sky.sun_focus)
     //     * scene.sky.sun_intensity;
@@ -147,50 +148,44 @@ fn per_pixel(
         direction: camera.ray_directions[pixel_index],
         inv_direction: 1.0 / camera.ray_directions[pixel_index],
     };
-    let mut multiplier = 1.0;
-    let mut color = Vec3::ZERO;
-    let normal = Normal::new(0.0, 1.0).unwrap();
+    let mut contribution = Vec3::ONE;
+    let mut light = Vec3::ZERO;
     for _ in 0..=bounces {
         if let Some(payload) = trace_ray(&ray, scene) {
             let material = scene.materials[payload.material_id];
 
-            let light_intensity = compute_light_intensity(
-                scene,
-                (ray.origin + payload.hit_distance * ray.direction).into(),
-                payload.world_normal,
-                // -ray.direction,
-                // material.specular,
-            );
+            // let light_intensity = compute_light_intensity(
+            //     scene,
+            //     (ray.origin + payload.hit_distance * ray.direction).into(),
+            //     payload.world_normal,
+            // );
+            // light += light_intensity;
 
-            let mut hit_color = material.albedo;
-            hit_color *= light_intensity;
-
-            color += hit_color * multiplier;
-            multiplier *= 0.25;
+            contribution *= material.albedo;
+            light += material.get_emission();
 
             ray.origin = (payload.world_position + payload.world_normal * 0.0001).into();
-
-            let rand_dir = Vec3::new(normal.sample(rng), normal.sample(rng), normal.sample(rng));
-            // let rand_dir = Vec3::new(rng.gen(), rng.gen(), rng.gen()) - 0.5;
-            ray.direction = reflect(
-                ray.direction,
-                (payload.world_normal + material.roughness * rand_dir).into(),
-            );
+            ray.direction =
+                (Vec3A::from(payload.world_normal) + random_unit_sphere(rng)).normalize();
         } else {
-            color += sky_color(scene, &ray) * multiplier;
+            light += sky_color(scene, &ray) * contribution;
             break;
         }
     }
-    color.extend(1.0)
+    (light).extend(1.0)
 }
 
-fn compute_light_intensity(
-    scene: &Scene,
-    position: Vec3,
-    normal: Vec3,
-    // view: Vec3A,
-    // s: f32,
-) -> f32 {
+fn random_unit_sphere(rng: &mut ThreadRng) -> Vec3A {
+    let normal_distr = StandardNormal;
+    Vec3A::new(
+        normal_distr.sample(rng),
+        normal_distr.sample(rng),
+        normal_distr.sample(rng),
+    )
+    .normalize()
+}
+
+fn compute_light_intensity(scene: &Scene, position: Vec3, normal: Vec3) -> f32 {
     let mut light_intensity = 0.0;
     for light in &scene.lights {
         let light_dir = light.direction.normalize();
@@ -213,15 +208,6 @@ fn compute_light_intensity(
         if n_dot_l > 0.0 {
             light_intensity += light.intensity * n_dot_l / (normal.length() * light_dir.length());
         }
-
-        // specular
-        // if s != -1.0 {
-        //     let r = 2.0 * normal * normal.dot(light_dir) - light_dir;
-        //     let r_dot_v = r.dot(view.into());
-        //     if r_dot_v > 0.0 {
-        //         light_intensity += light.intensity * s.powf(r_dot_v / (r.length() * view.length()))
-        //     }
-        // }
     }
     light_intensity
 }

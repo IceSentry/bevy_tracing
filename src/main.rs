@@ -9,7 +9,7 @@ use std::time::Instant;
 
 use bevy::{
     math::vec3,
-    prelude::{shape::Cube, *},
+    prelude::*,
     render::render_resource::{
         Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
     },
@@ -19,7 +19,7 @@ use bevy_egui::{egui::TextureId, EguiContexts, EguiPlugin};
 use camera::{update_camera, CustomCamera};
 
 use renderer::Renderer;
-use scene::{Light, Material, Scene, Sky, Sphere, TriangleMesh};
+use scene::{Light, Material, Scene, Sky, Sphere};
 use ui::{draw_dock_area, setup_ui};
 
 #[derive(Resource)]
@@ -63,7 +63,7 @@ fn main() {
             // sky: Sky::BLACK,
             lights: vec![Light {
                 direction: vec3(1.0, 1.0, 1.0),
-                intensity: 1.0,
+                intensity: 0.5,
             }],
             materials: vec![
                 Material {
@@ -97,6 +97,12 @@ fn main() {
                     roughness: 1.0,
                     ..default()
                 },
+                Material {
+                    albedo: vec3(0.6, 0.5, 0.0),
+                    emissive_color: vec3(0.6, 0.4, 0.0),
+                    emissive_power: 2.0,
+                    ..default()
+                },
             ],
             spheres: vec![
                 // Sphere {
@@ -123,6 +129,11 @@ fn main() {
                     position: vec3(1.25, -0.5, 0.0),
                     radius: 0.5,
                     material_id: 4,
+                },
+                Sphere {
+                    position: vec3(-10.0, 10.0, 10.0),
+                    radius: 10.0,
+                    material_id: 6,
                 },
             ],
             meshes: vec![

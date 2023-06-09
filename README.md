@@ -10,6 +10,7 @@ It is based on a few resources:
 - Sebastian Lague ray tracing video: <https://www.youtube.com/watch?v=Qz0KTGYJtUk>
 - Raytracing in a weekend series: <https://raytracing.github.io>
 - Scratchapixel: <https://www.scratchapixel.com>
+- Computer Graphics From Scratch: <https://gabrielgambetta.com/computer-graphics-from-scratch/>
 
 Some more specific algorithms are linked directly in the code where they are used.
 

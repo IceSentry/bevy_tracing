@@ -25,6 +25,9 @@ impl Sky {
         zenith_color: Vec3::ZERO,
         horizon_color: Vec3::ZERO,
         ground_color: Vec3::ZERO,
+        // sun_focus: 1.0,
+        // sun_intensity: 1.0,
+        // sun_direction: Vec3::ONE,
     };
 }
 impl Default for Sky {
@@ -46,6 +49,8 @@ pub struct Material {
     pub roughness: f32,
     pub metallic: f32,
     pub specular: f32,
+    pub emissive_color: Vec3,
+    pub emissive_power: f32,
 }
 
 impl Default for Material {
@@ -55,7 +60,15 @@ impl Default for Material {
             roughness: 1.0,
             metallic: 0.0,
             specular: -1.0,
+            emissive_color: Vec3::ZERO,
+            emissive_power: 0.0,
         }
+    }
+}
+
+impl Material {
+    pub fn get_emission(&self) -> Vec3 {
+        self.emissive_color * self.emissive_power
     }
 }
 

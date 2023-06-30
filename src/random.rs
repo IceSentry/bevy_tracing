@@ -11,8 +11,8 @@ pub fn wang_hash(mut seed: u32) -> u32 {
     seed
 }
 
-pub fn pcg_hash(input: u32) -> u32 {
-    let state = input.wrapping_mul(747796405).wrapping_add(2891336453);
+pub fn pcg_hash(seed: u32) -> u32 {
+    let state = seed.wrapping_mul(747796405).wrapping_add(2891336453);
     let word = ((state >> ((state >> 28) + 4)) ^ state).wrapping_mul(277803737);
     (word >> 22) ^ word
 }
@@ -49,9 +49,9 @@ impl RngCore for PcgHashRng {
 
 pub fn in_unit_sphere<R: Rng>(rng: &mut R) -> Vec3A {
     Vec3A::new(
-        rng.gen::<f32>() * 2.0 - 1.0,
-        rng.gen::<f32>() * 2.0 - 1.0,
-        rng.gen::<f32>() * 2.0 - 1.0,
+        rng.gen_range(-1.0..1.0),
+        rng.gen_range(-1.0..1.0),
+        rng.gen_range(-1.0..1.0),
     )
     .normalize()
 

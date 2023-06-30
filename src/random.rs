@@ -1,4 +1,5 @@
-use bevy::{math::Vec3A, prelude::Vec3};
+use bevy::math::Vec3A;
+use rand::{Rng, RngCore};
 
 #[allow(unused)]
 pub fn wang_hash(mut seed: u32) -> u32 {
@@ -16,31 +17,49 @@ pub fn pcg_hash(input: u32) -> u32 {
     (word >> 22) ^ word
 }
 
-pub fn float(seed: &mut u32) -> f32 {
-    *seed = pcg_hash(*seed);
-    *seed as f32 / u32::MAX as f32
+pub struct PcgHashRng {
+    pub seed: u32,
 }
 
-pub fn in_unit_sphere(seed: &mut u32) -> Vec3A {
-    Vec3A::new(
-        float(seed) * 2.0 - 1.0,
-        float(seed) * 2.0 - 1.0,
-        float(seed) * 2.0 - 1.0,
-    )
-}
-
-#[cfg(test)]
-mod test {
-    use super::{float, pcg_hash};
-
-    #[test]
-    fn test_random() {
-        let mut seed = 42;
-        println!("pcg_hash: {} seed: {seed}", pcg_hash(seed));
-
-        println!("float: {} hash: {}", float(&mut seed), seed);
-        println!("float: {} hash: {}", float(&mut seed), seed);
-        println!("float: {} hash: {}", float(&mut seed), seed);
-        println!("{}", seed);
+impl PcgHashRng {
+    pub fn new(seed: u32) -> Self {
+        Self { seed }
     }
+}
+
+impl RngCore for PcgHashRng {
+    fn next_u32(&mut self) -> u32 {
+        self.seed = pcg_hash(self.seed);
+        self.seed
+    }
+
+    fn next_u64(&mut self) -> u64 {
+        rand_core::impls::next_u64_via_u32(self)
+    }
+
+    fn fill_bytes(&mut self, dest: &mut [u8]) {
+        rand_core::impls::fill_bytes_via_next(self, dest)
+    }
+
+    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand::Error> {
+        self.fill_bytes(dest);
+        Ok(())
+    }
+}
+
+pub fn in_unit_sphere<R: Rng>(rng: &mut R) -> Vec3A {
+    Vec3A::new(
+        rng.gen::<f32>() * 2.0 - 1.0,
+        rng.gen::<f32>() * 2.0 - 1.0,
+        rng.gen::<f32>() * 2.0 - 1.0,
+    )
+    .normalize()
+
+    // let normal_distr = StandardNormal;
+    // Vec3A::new(
+    //     normal_distr.sample(rng),
+    //     normal_distr.sample(rng),
+    //     normal_distr.sample(rng),
+    // )
+    // .normalize()
 }

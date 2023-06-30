@@ -5,13 +5,12 @@ use bevy::{
     prelude::*,
     render::{mesh::Indices, primitives::Aabb},
 };
-use rand::prelude::*;
-use rand_distr::StandardNormal;
 use rayon::prelude::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
 use crate::{
     camera::CustomCamera,
     math_utils::smoothstep,
+    random::{self, PcgHashRng},
     scene::{Scene, Sphere},
 };
 
@@ -77,13 +76,9 @@ impl Renderer {
             .enumerate()
             // This block runs in parallel for every pixel
             .for_each(|(pixel_index, (pixel, accumulated_pixel))| {
-                let mut rng = rand::thread_rng();
-                // this helps with getting a consistent render but also not end up with the same rays every frame
-                StdRng::seed_from_u64(self.samples as u64);
-
                 let mut color = Vec4::ZERO;
                 for _ in 0..self.rays_per_pixel {
-                    color += per_pixel(scene, camera, pixel_index, self.bounces, &mut rng);
+                    color += per_pixel(scene, camera, pixel_index, self.bounces, self.samples);
                 }
                 color /= self.rays_per_pixel as f32;
 
@@ -141,7 +136,7 @@ fn per_pixel(
     camera: &CustomCamera,
     pixel_index: usize,
     bounces: u8,
-    rng: &mut ThreadRng,
+    samples: usize,
 ) -> Vec4 {
     let mut ray = Ray {
         origin: Vec3A::from(camera.position),
@@ -150,7 +145,14 @@ fn per_pixel(
     };
     let mut contribution = Vec3::ONE;
     let mut light = Vec3::ZERO;
+
+    let mut seed = pixel_index as u32;
+    seed *= samples as u32;
+
     for _ in 0..=bounces {
+        seed += 1;
+        let mut rng = PcgHashRng::new(seed);
+
         if let Some(payload) = trace_ray(&ray, scene) {
             let material = scene.materials[payload.material_id];
 
@@ -166,7 +168,7 @@ fn per_pixel(
 
             ray.origin = (payload.world_position + payload.world_normal * 0.0001).into();
             ray.direction =
-                (Vec3A::from(payload.world_normal) + random_unit_sphere(rng)).normalize();
+                (Vec3A::from(payload.world_normal) + random::in_unit_sphere(&mut rng)).normalize();
         } else {
             light += sky_color(scene, &ray) * contribution;
             break;
@@ -175,16 +177,7 @@ fn per_pixel(
     (light).extend(1.0)
 }
 
-fn random_unit_sphere(rng: &mut ThreadRng) -> Vec3A {
-    let normal_distr = StandardNormal;
-    Vec3A::new(
-        normal_distr.sample(rng),
-        normal_distr.sample(rng),
-        normal_distr.sample(rng),
-    )
-    .normalize()
-}
-
+#[allow(unused)]
 fn compute_light_intensity(scene: &Scene, position: Vec3, normal: Vec3) -> f32 {
     let mut light_intensity = 0.0;
     for light in &scene.lights {

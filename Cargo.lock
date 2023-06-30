@@ -1146,6 +1146,7 @@ dependencies = [
  "puffin",
  "puffin_egui",
  "rand",
+ "rand_core",
  "rand_distr",
  "rayon",
 ]

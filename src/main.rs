@@ -225,7 +225,6 @@ fn resize_image(
 ) {
     let image = images.get_mut(&viewport_image.0).unwrap();
     if viewport_size.0 != *prev_viewport_size || render_scale.0 != *prev_scale {
-        println!("reset");
         let size = Extent3d {
             width: (viewport_size.0.x * render_scale.0) as u32,
             height: (viewport_size.0.y * render_scale.0) as u32,

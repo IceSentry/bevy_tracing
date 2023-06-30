@@ -1,17 +1,17 @@
 use std::ops::RangeInclusive;
 
 use bevy::{
-    math::{vec3, vec3a, Vec3A},
+    math::Vec3A,
     prelude::*,
     render::{mesh::Indices, primitives::Aabb},
 };
 use rand::prelude::*;
-use rand_distr::{Normal, StandardNormal};
+use rand_distr::StandardNormal;
 use rayon::prelude::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
 use crate::{
     camera::CustomCamera,
-    math_utils::{reflect, smoothstep},
+    math_utils::smoothstep,
     scene::{Scene, Sphere},
 };
 

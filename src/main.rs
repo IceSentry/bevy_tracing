@@ -9,6 +9,7 @@ mod ui;
 use std::time::Instant;
 
 use bevy::{
+    diagnostic::FrameTimeDiagnosticsPlugin,
     math::vec3,
     prelude::*,
     render::render_resource::{
@@ -51,6 +52,7 @@ fn main() {
         // .add_plugin(PuffinTracePlugin::new())
         // .insert_resource(ShowProfiler(true))
         .add_plugin(EguiPlugin)
+        .add_plugin(FrameTimeDiagnosticsPlugin)
         .init_resource::<Frametimes>()
         .insert_resource(RenderScale(0.75))
         .insert_resource(CustomCamera::new(45.0, 0.1, 100.0))

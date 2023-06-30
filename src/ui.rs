@@ -9,7 +9,10 @@ use crate::{
     Frametimes, RenderScale, ViewportEguiTexture, ViewportSize,
 };
 
-use bevy::prelude::*;
+use bevy::{
+    diagnostic::{Diagnostic, Diagnostics, FrameTimeDiagnosticsPlugin},
+    prelude::*,
+};
 use bevy_egui::{
     egui::{self, TextureId},
     EguiContexts,
@@ -46,7 +49,6 @@ pub fn setup_ui(mut commands: Commands) {
 pub fn draw_dock_area(
     mut egui_context: EguiContexts,
     mut tree: ResMut<DockTree>,
-    time: Res<Time>,
     mut scene: ResMut<Scene>,
     viewport_egui_texture: Res<ViewportEguiTexture>,
     mut viewport_size: ResMut<ViewportSize>,
@@ -54,13 +56,19 @@ pub fn draw_dock_area(
     mut camera: ResMut<CustomCamera>,
     mut renderer: ResMut<Renderer>,
     mut viewport_scale: ResMut<RenderScale>,
+    diagnostics: Res<Diagnostics>,
 ) {
     puffin::profile_function!();
+    let frame_time = diagnostics
+        .get(FrameTimeDiagnosticsPlugin::FRAME_TIME)
+        .and_then(Diagnostic::smoothed)
+        .map(|dt| dt / 1000.0)
+        .unwrap_or(0.0);
+
     let mut tab_viewer = TabViewer {
         viewport_texture: viewport_egui_texture.0,
         viewport_size: &mut viewport_size.0,
-        // TODO have diagnostic struct
-        dt: time.delta_seconds(),
+        dt: frame_time as f32,
         frametimes: &render_dt,
         scene: &mut scene,
         camera: &mut camera,
@@ -234,6 +242,7 @@ impl<'a> egui_dock::TabViewer for TabViewer<'a> {
                     self.viewport_size.y,
                     fmt_usize_separator((self.viewport_size.x * self.viewport_size.y) as usize)
                 ));
+                // *frame_cpu_avg = *frame_cpu_avg * 0.95 + (begin_frame.elapsed().as_secs_f64() * 1000.0) * 0.05;
                 ui.label(format!("dt: {:.2}ms", self.dt * 1000.0));
                 ui.label(format!(
                     "Render dt: {:.2}ms",
